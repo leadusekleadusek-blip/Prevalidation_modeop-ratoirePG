@@ -70,11 +70,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- EN-TÊTE AVEC LE LOGO P&G ET LE TITRE ---
+# --- EN-TÊTE AVEC LE NOUVEAU LOGO P&G ET LE TITRE ---
 header_col1, header_col2 = st.columns([1, 6], gap="medium")
 
 with header_col1:
-  logo_path = "P&G_Logo.svg.webp"
+  logo_path = "Procter_&_Gamble_logo.svg.webp"
   if os.path.exists(logo_path):
     st.image(logo_path, width=110)
   else:
@@ -451,26 +451,27 @@ if uploaded_file is not None and text_manual != "":
       pdf = PDFReport()
       pdf.add_page()
       
-      # 1. BANDEAU BLEU TITRE HAUT DE PAGE
-      pdf.set_fill_color(11, 35, 65) # Bleu P&G (#0B2341)
-      pdf.rect(10, 10, 190, 20, 'F')
-      
-      if os.path.exists("P&G_Logo.svg.webp"):
+      # 1. LOGO P&G À GAUCHE + BANDEAU BLEU TITRE ENSUITE
+      logo_file_pg = "Procter_&_Gamble_logo.svg.webp"
+      if os.path.exists(logo_file_pg):
           try:
-              pdf.image("P&G_Logo.svg.webp", x=13, y=12, w=15)
+              pdf.image(logo_file_pg, x=10, y=10, w=26, h=20)
           except Exception:
               pass
 
-      pdf.set_xy(32, 13)
-      pdf.set_font("helvetica", "B", 12)
+      pdf.set_fill_color(11, 35, 65) # Bleu P&G (#0B2341)
+      pdf.rect(38, 10, 162, 20, 'F')
+
+      pdf.set_xy(42, 13)
+      pdf.set_font("helvetica", "B", 11.5)
       pdf.set_text_color(255, 255, 255)
-      pdf.cell(165, 6, clean_pdf_text("Rapport de l'analyse du mode operatoire"), 0, 1, "L")
-      
-      pdf.set_xy(32, 19)
+      pdf.cell(154, 5, clean_pdf_text("Rapport de l'analyse du mode operatoire"), 0, 1, "L")
+
+      pdf.set_xy(42, 19)
       pdf.set_font("helvetica", "", 8.5)
       pdf.set_text_color(220, 230, 242)
-      pdf.cell(165, 5, clean_pdf_text("P&G Amiens | Assistant Securite Construction"), 0, 1, "L")
-      
+      pdf.cell(154, 5, clean_pdf_text("P&G Amiens | Assistant Securite Construction"), 0, 1, "L")
+
       pdf.set_y(33)
       
       # 2. LOGO CONFORME OU NON CONFORME (Juste avant le bandeau)

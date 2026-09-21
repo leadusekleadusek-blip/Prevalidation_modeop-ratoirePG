@@ -1,6 +1,7 @@
 import os
 import pypdf
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 
 # Configuration de la page
@@ -86,9 +87,7 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None and text_manual != "":
-  with st.spinner(
-      "🔄 Analyse croisée dynamique entre le Manuel P&G et le MOP..."
-  ):
+  with st.spinner("🔄 Analyse et extraction du document en cours..."):
     # Lecture du MOP soumis
     reader_mop = pypdf.PdfReader(uploaded_file)
     text_mop = ""
@@ -99,11 +98,11 @@ if uploaded_file is not None and text_manual != "":
   if len(text_mop.strip()) < 20:
     st.error(
         "⚠️ Le document PDF importé semble être une image scannée ou ne"
-        " contient pas de texte sélectionnable. L'application ne peut pas lire"
-        " le contenu (Score : 0%). Veuillez importer un PDF textuel."
+        " contient pas de texte sélectionnable. Veuillez importer un PDF"
+        " textuel."
     )
   else:
-    st.success("✨ Analyse croisée terminée avec succès !")
+    st.success("✨ Document extrait avec succès !")
 
     # --- CALCUL DYNAMIQUE DES SCORES ---
     text_mop_lower = text_mop.lower()
@@ -308,6 +307,50 @@ if uploaded_file is not None and text_manual != "":
             st.markdown(f"- **{el}** : Mention absente (Exigence P&G).")
         else:
           st.markdown("- Tous les critères techniques sont validés !")
+
+    # --- SECTION IA LOCALE (OLLAMA) ---
+    st.markdown(
+        "<br><hr style='border: 2px solid #0B2341;'><br>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("### 🤖 Audit de Sécurité Avancé par IA Locale (Ollama)")
+    st.markdown(
+        "Lance une analyse logique et contextuelle poussée du Mode Opératoire"
+        " via le modèle local Mistral."
+    )
+
+    if st.button("Lancer l'audit de sécurité IA (Local)", type="primary"):
+      with st.spinner("Analyse logique en cours via Ollama..."):
+        prompt = f"""
+                Agis en tant qu'auditeur de sécurité senior et responsable HSE du site P&G Amiens. 
+                Analyse ce mode opératoire (SOP/MOP) fourni ci-dessous en vérifiant la cohérence entre les risques et les moyens de prévention par rapport aux standards industriels de sécurité.
+                Détecte les tâches à haut risque et liste les recommandations d'amélioration.
+                
+                Texte du Mode Opératoire :
+                {text_mop}
+                """
+
+        try:
+          response = requests.post(
+              'http://localhost:11434/api/generate',
+              json={'model': 'mistral', 'prompt': prompt, 'stream': False},
+          )
+
+          if response.status_code == 200:
+            st.markdown(
+                "#### 📝 Rapport d'analyse approfondie (Ollama / Mistral)"
+            )
+            st.write(response.json()['response'])
+          else:
+            st.error(
+                "Erreur de connexion avec le modèle local. Ollama est-il lancé"
+                " sur votre poste ?"
+            )
+        except Exception as e:
+          st.error(
+              "Impossible de joindre le serveur Ollama (Vérifiez qu'il tourne"
+              f" sur http://localhost:11434). Erreur : {e}"
+          )
 
     # --- PLAN D'ACTION ---
     st.markdown(

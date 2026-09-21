@@ -1,4 +1,5 @@
 import os
+import re
 import pypdf
 import plotly.graph_objects as go
 import streamlit as st
@@ -137,6 +138,15 @@ if uploaded_file is not None and text_manual != "":
     st.success("✨ Document extrait avec succès !")
 
     text_mop_lower = text_mop.lower()
+
+    # --- EXTRACTION AUTOMATIQUE DES MÉTADONNÉES DU MOP ---
+    mop_lines = [line.strip() for line in text_mop.split('\n') if line.strip()]
+    intervention_title = mop_lines[0] if mop_lines else "Mode Opératoire - Intervention Chantier"
+    if len(intervention_title) > 65:
+        intervention_title = intervention_title[:62] + "..."
+
+    pdp_match = re.search(r'pdp[:\s\-]*([a-zA-Z0-9\-_]+)', text_mop_lower)
+    pdp_ref = pdp_match.group(1).upper() if pdp_match else "Non specifie (A verifier)"
 
     # --- 1. CONTRÔLE DES POINTS ADMINISTRATIFS OBLIGATOIRES ---
     admin_criteres = {
@@ -438,143 +448,167 @@ if uploaded_file is not None and text_manual != "":
           .replace("ℹ️", "[INFO] ")
       )
 
-    # --- GÉNÉRATION DU RAPPORT PDF PROFESSIONNEL COMPLET ---
+    # --- GÉNÉRATION DU RAPPORT PDF FIDÈLE À L'APPLICATION ---
     class PDFReport(FPDF):
-      def header(self):
-        # En-tête professionnel avec rappel P&G
-        if os.path.exists("P&G_Logo.svg.webp"):
-            try:
-                self.image("P&G_Logo.svg.webp", x=10, y=8, w=22)
-            except Exception:
-                pass
-        self.set_font("helvetica", "B", 12)
-        self.set_text_color(11, 35, 65) # Bleu P&G (#0B2341)
-        self.cell(0, 8, clean_pdf_text("P&G AMIENS - SITE DE PRODUCTION"), 0, 1, "R")
-        self.set_font("helvetica", "I", 9)
-        self.set_text_color(29, 78, 216) # Bleu accent (#1D4ED8)
-        self.cell(0, 5, clean_pdf_text("Rapport d'Audit et de Pre-validation des Modes Operatoires"), 0, 1, "R")
-        self.ln(5)
-        # Ligne de séparation
-        self.set_draw_color(11, 35, 65)
-        self.set_line_width(0.8)
-        self.line(10, self.get_y(), 200, self.get_y())
-        self.ln(5)
-
       def footer(self):
         self.set_y(-15)
         self.set_font("helvetica", "I", 8)
         self.set_text_color(128, 128, 128)
-        self.cell(0, 10, clean_pdf_text(f"Page {self.page_no()} | Validation requise 48h avant intervention"), 0, 0, "C")
+        self.cell(0, 10, clean_pdf_text(f"Page {self.page_no()} | Validation requise 48h avant intervention - Site P&G Amiens"), 0, 0, "C")
 
     def create_pdf():
       pdf = PDFReport()
       pdf.add_page()
-      pdf.set_font("helvetica", "", 10)
-
-      # 1. ENCART STATUT & SCORES GLOBAUX
-      pdf.set_fill_color(248, 249, 250)
-      pdf.rect(10, pdf.get_y(), 190, 22, style="F")
       
+      # 1. BANDEAU BLEU TITRE (Similaire à l'application)
+      pdf.set_fill_color(11, 35, 65) # Bleu P&G (#0B2341)
+      pdf.rect(10, 10, 190, 22, style="F")
+      
+      if os.path.exists("P&G_Logo.svg.webp"):
+          try:
+              pdf.image("P&G_Logo.svg.webp", x=13, y=13, w=16)
+          except Exception:
+              pass
+
+      pdf.set_xy(32, 14)
+      pdf.set_font("helvetica", "B", 13)
+      pdf.set_text_color(255, 255, 255)
+      pdf.cell(165, 7, clean_pdf_text("Rapport de l'analyse du mode operatoire"), 0, 1, "L")
+      
+      pdf.set_xy(32, 21)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(220, 230, 242)
+      pdf.cell(165, 5, clean_pdf_text("P&G Amiens | Assistant Securite Construction"), 0, 1, "L")
+      
+      pdf.set_y(38)
+      
+      # 2. SOUS-TITRE : TITRE INTERVENTION & PDP (En dehors du bandeau)
+      pdf.set_font("helvetica", "B", 10)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 6, clean_pdf_text(f"Titre Intervention : {intervention_title}"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(80, 80, 80)
+      pdf.cell(190, 5, clean_pdf_text(f"Reference PDP : {pdp_ref}"), 0, 1)
+      pdf.ln(4)
+
+      # 3. BANNIÈRE DE CONFORMITÉ & SYNTHÈSE
       pdf.set_font("helvetica", "B", 11)
       if est_conforme:
-          pdf.set_text_color(16, 185, 129) # Vert (#10B981)
-          statut_txt = "STATUT : MODE OPERATOIRE CONFORME"
+          pdf.set_fill_color(209, 250, 229) # Vert clair
+          pdf.set_text_color(6, 95, 70)     # Vert foncé
+          statut_msg = "[OK] MODE OPERATOIRE CONFORME AUX ATTENTES P&G"
       else:
-          pdf.set_text_color(239, 68, 68) # Rouge (#EF4444)
-          statut_txt = "STATUT : MODE OPERATOIRE NON CONFORME"
+          pdf.set_fill_color(254, 226, 226) # Rouge clair
+          pdf.set_text_color(153, 27, 27)   # Rouge foncé
+          statut_msg = "[X] MODE OPERATOIRE NON CONFORME - ELEMENTS MANQUANTS"
       
-      pdf.cell(190, 8, clean_pdf_text(statut_txt), 0, 1, "C")
-      
-      pdf.set_font("helvetica", "", 10)
-      pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 6, clean_pdf_text(f"Score Global : {score_global}%  |  Administratif : {score_admin}%  |  Technique : {score_technique}%"), 0, 1, "C")
-      pdf.ln(8)
+      pdf.rect(10, pdf.get_y(), 190, 10, style="F")
+      pdf.cell(190, 10, clean_pdf_text(statut_msg), 0, 1, "C")
+      pdf.ln(5)
 
-      # 2. PHASE 1 : VERIFICATION ADMINISTRATIVE
-      pdf.set_font("helvetica", "B", 11)
+      # Indicateur Global & Scores
+      pdf.set_font("helvetica", "B", 10)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 7, clean_pdf_text("1. VERIFICATION ADMINISTRATIVE & FORMELLE"), 0, 1, "L")
-      pdf.set_font("helvetica", "", 10)
-      pdf.set_text_color(0, 0, 0)
-      
-      pdf.cell(190, 6, clean_pdf_text("Elements valides :"), 0, 1)
-      if admin_valides:
-          for item in admin_valides:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"   [OK] {item}"))
-      else:
-          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun element valide."))
-          
-      pdf.ln(2)
-      pdf.cell(190, 6, clean_pdf_text("Elements manquants (Points rouges a rectifier) :"), 0, 1)
-      if admin_manquants:
-          for item in admin_manquants:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"   [X] {item}"))
-      else:
-          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun manquement administratif."))
+      pdf.cell(190, 6, clean_pdf_text(f"Indice de Conformite Global : {score_global}%"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(50, 50, 50)
+      pdf.cell(190, 5, clean_pdf_text(f"- Score Administratif & Formel : {score_admin}%"), 0, 1)
+      pdf.cell(190, 5, clean_pdf_text(f"- Score Technique & Mise en forme : {score_technique}%"), 0, 1)
       pdf.ln(6)
 
-      # 3. PHASE 2 : CONTENU TECHNIQUE & STRUCTURATION
+      # 4. TABLEAU : ANALYSE DETAILLEE PAR PHASE
       pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 7, clean_pdf_text("2. CONTENU TECHNIQUE & STRUCTURATION DU MOP"), 0, 1, "L")
-      pdf.set_font("helvetica", "", 10)
+      pdf.cell(190, 7, clean_pdf_text("Analyse DETAILLEE par Phase"), 0, 1, "L")
+      
+      # En-têtes du tableau
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_fill_color(11, 35, 65)
+      pdf.set_text_color(255, 255, 255)
+      pdf.cell(45, 7, clean_pdf_text("Phase / Domaine"), 1, 0, "C", True)
+      pdf.cell(72, 7, clean_pdf_text("Elements Valides ([OK])"), 1, 0, "C", True)
+      pdf.cell(73, 7, clean_pdf_text("Elements Manquants ([X])"), 1, 1, "C", True)
+
+      # Lignes du tableau
+      pdf.set_font("helvetica", "", 8.5)
       pdf.set_text_color(0, 0, 0)
       
-      pdf.cell(190, 6, clean_pdf_text("Criteres techniques valides :"), 0, 1)
-      if tech_valides:
-          for item in tech_valides:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"   [OK] {item}"))
-      else:
-          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun critere valide."))
-          
-      pdf.ln(2)
-      pdf.cell(190, 6, clean_pdf_text("Criteres techniques manquants :"), 0, 1)
-      if tech_manquants:
-          for item in tech_manquants:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"   [X] {item}"))
-      else:
-          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun manquement technique."))
+      val_admin_txt = ", ".join(admin_valides) if admin_valides else "Aucun"
+      manq_admin_txt = ", ".join(admin_manquants) if admin_manquants else "Aucun"
+      val_tech_txt = ", ".join(tech_valides) if tech_valides else "Aucun"
+      manq_tech_txt = ", ".join(tech_manquants) if tech_manquants else "Aucun"
+
+      # Ligne 1 : Administrative
+      pdf.cell(45, 12, clean_pdf_text("1. Admin. & Formel"), 1, 0, "C")
+      pdf.cell(72, 12, clean_pdf_text(val_admin_txt[:100]), 1, 0, "L")
+      pdf.cell(73, 12, clean_pdf_text(manq_admin_txt[:100]), 1, 1, "L")
+
+      # Ligne 2 : Technique
+      pdf.cell(45, 12, clean_pdf_text("2. Technique & MOP"), 1, 0, "C")
+      pdf.cell(72, 12, clean_pdf_text(val_tech_txt[:100]), 1, 0, "L")
+      pdf.cell(73, 12, clean_pdf_text(manq_tech_txt[:100]), 1, 1, "L")
       pdf.ln(6)
 
-      # 4. TACHES A HAUT RISQUE DETECTEES
+      # 5. TACHES A HAUT RISQUE & SUGGESTIONS CONTEXTUELLES
       pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 7, clean_pdf_text("3. TACHES A HAUT RISQUE DETECTEES (STANDARDS P&G)"), 0, 1, "L")
-      pdf.set_font("helvetica", "", 10)
+      pdf.cell(190, 7, clean_pdf_text("Taches a Haut Risque & Suggestions de Securite"), 0, 1, "L")
+      pdf.set_font("helvetica", "", 9)
       pdf.set_text_color(0, 0, 0)
-      
+
       if taches_detectees:
-          pdf.multi_cell(190, 5, clean_pdf_text(f"Attention : {len(taches_detectees)} activite(s) a haut risque identifiee(s) necessitant des permis dedies :"))
-          for tache in taches_detectees:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"   [!] Activite sensible : {tache}"))
+          pdf.multi_cell(190, 5, clean_pdf_text(f"[!] {len(taches_detectees)} tache(s) a haut risque identifiee(s) : " + ", ".join(taches_detectees)))
       else:
-          pdf.multi_cell(190, 5, clean_pdf_text("   Aucune activite a haut risque majeure detectee par mots-cles."))
-      pdf.ln(6)
-
-      # 5. SUGGESTIONS DE SECURITE CONTEXTUELLES & OUTILS
-      pdf.set_font("helvetica", "B", 11)
-      pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 7, clean_pdf_text("4. SUGGESTIONS DE SECURITE CONTEXTUELLES (OUTILS & EPI)"), 0, 1, "L")
-      pdf.set_font("helvetica", "", 10)
-      pdf.set_text_color(0, 0, 0)
+          pdf.multi_cell(190, 5, clean_pdf_text("[OK] Aucune activite a haut risque majeure detectee."))
       
+      pdf.ln(3)
       if suggestions_contexte:
           for sug in suggestions_contexte:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"   - {sug}"))
+              pdf.multi_cell(190, 5, clean_pdf_text(f"- {sug}"))
       else:
-          pdf.multi_cell(190, 5, clean_pdf_text("   Aucune remarque particuliere sur les outils ou equipements."))
+          pdf.multi_cell(190, 5, clean_pdf_text("- Aucune remarque particuliere sur les outils ou equipements."))
       pdf.ln(6)
 
-      # 6. PLAN D'ACTION / RECOMMANDATIONS FINALES
+      # 6. LISTE DETAILLEE DES ELEMENTS A COMPLETER & SUGGESTIONS
       pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 7, clean_pdf_text("5. PLAN D'ACTION & RECOMMANDATIONS FINALES"), 0, 1, "L")
-      pdf.set_font("helvetica", "", 10)
-      pdf.set_text_color(0, 0, 0)
+      pdf.cell(190, 7, clean_pdf_text("Liste DETAILLEE des Elements a Completer & Suggestions"), 0, 1, "L")
       
-      pdf.multi_cell(190, 5, clean_pdf_text(" - Integrer l'ensemble des points en rouge listes ci-dessus dans la version revisee du MOP."))
-      pdf.multi_cell(190, 5, clean_pdf_text(" - Valider la presence des permis de travail et signatures du superviseur N2."))
-      pdf.multi_cell(190, 5, clean_pdf_text(" - Transmettre le dossier corrige au moins 48h avant le debut des travaux sur le site P&G Amiens."))
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_text_color(153, 27, 27)
+      pdf.cell(190, 6, clean_pdf_text("Points administratifs et formels a rajouter :"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(0, 0, 0)
+      if admin_manquants:
+          for item in admin_manquants:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"  - {item} : Integrer cette information de maniere explicite."))
+      else:
+          pdf.multi_cell(190, 5, clean_pdf_text("  - Aucun manquement formel detecte."))
+
+      pdf.ln(3)
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_text_color(153, 27, 27)
+      pdf.cell(190, 6, clean_pdf_text("Ameliorations de structure technique :"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(0, 0, 0)
+      if tech_manquants:
+          for item in tech_manquants:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"  - {item} : Structurer sous forme de tableau detaille."))
+      else:
+          pdf.multi_cell(190, 5, clean_pdf_text("  - Structure technique conforme."))
+
+      pdf.ln(3)
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 6, clean_pdf_text("Recommandations & Suggestions Securite sur-mesure :"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(0, 0, 0)
+      if suggestions_contexte:
+          for s in suggestions_contexte:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"  - {s}"))
+      if taches_detectees:
+          pdf.multi_cell(190, 5, clean_pdf_text(f"  - Permis requis : Assurez-vous que les permis associes aux taches identifiees sont formalises."))
+      pdf.multi_cell(190, 5, clean_pdf_text("  - Delai de soumission : Transmettre la version corigee au moins 48h avant le debut des travaux sur le site P&G Amiens."))
 
       return bytes(pdf.output())
 

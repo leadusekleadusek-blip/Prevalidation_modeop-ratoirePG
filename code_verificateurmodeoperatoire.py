@@ -471,48 +471,46 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_text_color(220, 230, 242)
       pdf.cell(165, 5, clean_pdf_text("P&G Amiens | Assistant Securite Construction"), 0, 1, "L")
       
-      pdf.set_y(34)
+      pdf.set_y(33)
       
-      # 2. BANNIÈRE DE STATUT OFFICIEL AVEC LOGO CONFORME / NON CONFORME
+      # 2. LOGO CONFORME OU NON CONFORME (Juste avant le bandeau)
+      logo_file = "Logo conforme.jpg" if est_conforme else "Logo non conforme.jpg"
+      if os.path.exists(logo_file):
+          try:
+              pdf.image(logo_file, x=96, y=pdf.get_y(), w=18)
+              pdf.set_y(pdf.get_y() + 20)
+          except Exception:
+              pass
+
+      # 3. BANNIÈRE DE STATUT OFFICIEL
       if est_conforme:
           pdf.set_fill_color(209, 250, 229)
           pdf.set_draw_color(16, 185, 129)
           pdf.set_text_color(6, 95, 70)
           statut_msg = "MODE OPERATOIRE CONFORME AUX ATTENTES P&G"
-          logo_file = "Logo conforme.jpg"
       else:
           pdf.set_fill_color(254, 226, 226)
           pdf.set_draw_color(239, 68, 68)
           pdf.set_text_color(153, 27, 27)
           statut_msg = "MODE OPERATOIRE NON CONFORME - ELEMENTS MANQUANTS"
-          logo_file = "Logo non conforme.jpg"
       
       pdf.rect(10, pdf.get_y(), 190, 10, 'DF')
-      
-      if os.path.exists(logo_file):
-          try:
-              pdf.image(logo_file, x=12, y=pdf.get_y() + 1.5, w=7)
-          except Exception:
-              pass
-          pdf.set_xy(22, pdf.get_y() + 2)
-      else:
-          pdf.set_xy(12, pdf.get_y() + 2)
-
+      pdf.set_xy(10, pdf.get_y() + 2)
       pdf.set_font("helvetica", "B", 9)
-      pdf.cell(170, 6, clean_pdf_text(statut_msg), 0, 1, "C")
+      pdf.cell(190, 6, clean_pdf_text(statut_msg), 0, 1, "C")
       pdf.ln(3)
 
-      # 3. CARTE TABLEAU DE BORD (Tachymètre visuel à gauche + Scores à droite)
+      # 4. CARTE TABLEAU DE BORD (Taux de conformité à gauche + Scores à droite)
       card_y = pdf.get_y()
       pdf.set_fill_color(248, 249, 250)
       pdf.set_draw_color(210, 215, 222)
       pdf.rect(10, card_y, 190, 24, 'DF')
       
-      # Tachymètre / Indicateur de vitesse à gauche
+      # Taux de conformité à gauche
       pdf.set_xy(12, card_y + 2)
       pdf.set_font("helvetica", "B", 8)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(75, 4, clean_pdf_text("TACHYMETRE DE CONFORMITE"), 0, 1, "C")
+      pdf.cell(75, 4, clean_pdf_text("TAUX DE CONFORMITE"), 0, 1, "C")
       
       bar_x = 18
       bar_y = card_y + 11
@@ -545,7 +543,6 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_text_color(11, 35, 65)
       pdf.cell(100, 5, clean_pdf_text("Scores par domaine d'evaluation :"), 0, 1, "L")
       
-      # Administratif
       pdf.set_x(95)
       pdf.set_font("helvetica", "", 8.5)
       pdf.set_text_color(60, 60, 60)
@@ -559,7 +556,6 @@ if uploaded_file is not None and text_manual != "":
           pdf.set_text_color(239, 68, 68)
       pdf.cell(50, 5, clean_pdf_text(f"{score_admin}%"), 0, 1, "L")
 
-      # Technique
       pdf.set_xy(95, card_y + 13)
       pdf.set_font("helvetica", "", 8.5)
       pdf.set_text_color(60, 60, 60)
@@ -575,7 +571,7 @@ if uploaded_file is not None and text_manual != "":
 
       pdf.set_y(card_y + 28)
 
-      # 4. BANDEAU BLEU : "ANALYSE DÉTAILLÉE PAR PHASE"
+      # 5. BANDEAU BLEU : "ANALYSE DÉTAILLÉE PAR PHASE"
       pdf.set_fill_color(11, 35, 65)
       pdf.rect(10, pdf.get_y(), 190, 7, 'F')
       pdf.set_xy(12, pdf.get_y() + 1)
@@ -634,7 +630,7 @@ if uploaded_file is not None and text_manual != "":
       draw_phase_card("Phase 1 : Verification Administrative & Formelle", admin_valides, admin_manquants)
       draw_phase_card("Phase 2 : Contenu Technique & Structuration", tech_valides, tech_manquants)
 
-      # 5. TÂCHES À HAUT RISQUE EN LISTE À PUCES & SUGGESTIONS
+      # 6. TÂCHES À HAUT RISQUE EN LISTE À PUCES PROPRE & SUGGESTIONS
       if taches_detectees or suggestions_contexte:
           pdf.set_font("helvetica", "B", 9.5)
           pdf.set_text_color(11, 35, 65)
@@ -657,7 +653,7 @@ if uploaded_file is not None and text_manual != "":
               pdf.set_font("helvetica", "", 8)
               for tache in taches_detectees:
                   pdf.set_x(15)
-                  pdf.multi_cell(180, 4, clean_pdf_text(f"- [!] Activite sensible : {tache}"))
+                  pdf.multi_cell(180, 4, clean_pdf_text(f"- {tache}"))
           
           for sug in suggestions_contexte:
               pdf.set_x(13)
@@ -666,7 +662,7 @@ if uploaded_file is not None and text_manual != "":
               
           pdf.set_y(start_y + box_h + 3)
 
-      # 6. LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER & SUGGESTIONS (Encadré Orange)
+      # 7. LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER & SUGGESTIONS (Encadré Orange)
       pdf.set_font("helvetica", "B", 9.5)
       pdf.set_text_color(11, 35, 65)
       pdf.cell(190, 5, clean_pdf_text("Liste DETAILLEE des Elements a Completer & Suggestions"), 0, 1)

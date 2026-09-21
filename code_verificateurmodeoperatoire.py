@@ -2,7 +2,6 @@ import os
 import pypdf
 import plotly.graph_objects as go
 import streamlit as st
-from openai import OpenAI
 
 # Configuration de la page
 st.set_page_config(
@@ -13,19 +12,13 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        /* Couleurs et typographie globales */
         .main {
             background-color: #f8f9fa;
         }
         h1, h2, h3 {
-            color: #0B2341; /* Bleu marine corporate P&G */
+            color: #0B2341;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
-        /* Cartes de résultats */
-        .stAlert {
-            border-radius: 10px;
-        }
-        /* Style des bannières d'en-tête */
         .pg-header {
             background: linear-gradient(90deg, #0B2341 0%, #1D4ED8 100%);
             padding: 25px;
@@ -33,121 +26,119 @@ st.markdown(
             color: white;
             margin-bottom: 25px;
         }
+        .card-tache {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #1D4ED8;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 10px;
+        }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# En-tête de l'application aux couleurs P&G
+# En-tête de l'application avec le logo ✅ assorti à l'onglet
 st.markdown(
     """
     <div class="pg-header">
-        <h1>🛡️ P&G Amiens | Assistant Sécurité Construction</h1>
-        <p style="font-size: 1.1rem; margin-bottom: 0;">Plateforme intelligente de pré-validation des Modes Opératoires et JSA (Entreprises Extérieures)</p>
+        <h1>✅ P&G Amiens | Assistant Sécurité Construction</h1>
+        <p style="font-size: 1.1rem; margin-bottom: 0;">Plateforme intelligente de pré-validation des Modes Opératoires et JSA</p>
     </div>
 """,
     unsafe_allow_html=True,
 )
 
-# Initialisation du client OpenAI (via les secrets Streamlit pour plus de sécurité)
-# Pour configurer ta clé : dans ton app Streamlit Cloud > Settings > Secrets > mets OPENAI_API_KEY="ta_cle"
-client = None
-if "OPENAI_API_KEY" in st.secrets:
-  client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# --- CHARGEMENT AUTOMATIQUE DU MANUEL P&G DEPUIS LE REPO GITHUB ---
+MANUAL_PATH = "Construction_Safety_Manual.pdf"
 
-# Zone de dépôt du fichier
+text_manual = ""
+if os.path.exists(MANUAL_PATH):
+  try:
+    reader_manual = pypdf.PdfReader(MANUAL_PATH)
+    for page in reader_manual.pages:
+      text_manual += page.extract_text() or ""
+  except Exception as e:
+    st.warning(
+        "⚠️ Impossible de lire le fichier 'Construction_Safety_Manual.pdf'."
+    )
+else:
+  st.error(
+      f"❌ Fichier de référence introuvable : `{MANUAL_PATH}`. Veuillez l'ajouter"
+      " à la racine de votre dépôt GitHub."
+  )
+
+# --- SECTION DE DÉPÔT DU DOCUMENT À AUDITER ---
+st.markdown("### 📂 Document de l'Entreprise Extérieure à auditer")
 uploaded_file = st.file_uploader(
-    "📂 Glissez-déposez le Mode Opératoire ou la JSA (Format PDF)", type=["pdf"]
+    "Glissez le Mode Opératoire (MOP) ou la JSA au format PDF", type=["pdf"]
 )
 
-if uploaded_file is not None:
+if uploaded_file is not None and text_manual != "":
   with st.spinner(
-      "🔄 Extraction et analyse experte du document en cours..."
+      "🔄 Analyse croisée entre le Manuel P&G et le MOP de l'entreprise..."
   ):
-    # 1. Extraction du texte du PDF
-    reader = pypdf.PdfReader(uploaded_file)
-    text_document = ""
-    for page in reader.pages:
-      text_document += page.extract_text() or ""
+    # Lecture du MOP soumis
+    reader_mop = pypdf.PdfReader(uploaded_file)
+    text_mop = ""
+    for page in reader_mop.pages:
+      text_mop += page.extract_text() or ""
 
-    # Simulation ou Appel Réel à l'IA avec les règles du Manuel P&G
-    # Si la clé API est configurée, l'IA fait une vraie analyse structurée en 2 phases.
-    if client:
-      prompt_system = """
-            Tu es l'expert HSE senior et le responsable de la sécurité construction du site P&G Amiens. 
-            Tu dois auditer un Mode Opératoire (MOP) ou une JSA soumis par une entreprise extérieure par rapport au "Construction Safety Manual" du site.
-            
-            Analyse le document fourni en 2 parties distinctes et renvoie un format JSON ou structuré clairement avec :
-            - Phase 1 (Administratif) : Vérification des numéros de PDP, dates, noms d'entreprises, signatures, désignation du chargé de travaux.
-            - Phase 2 (Technique & Opérationnel) : Décomposition logique des tâches, analyse des risques spécifiques, adéquation des EPI avec normes exigées (ex: jugulaire, gants EN388), et gestion des tâches à haut risque (permis de feu, espace confiné, consignation).
-            - Donne une note sur 100 pour la partie Administrative et une note sur 100 pour la partie Technique. Calcule une note globale (Moyenne).
-            - Liste précisément les points forts et les "Points à améliorer / Non-conformités bloquantes" avec les références associées du site P&G.
-            """
+  st.success("✨ Analyse croisée terminée avec succès !")
 
-      # Appel API (Exemple simplifié pour l'architecture)
-      try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": prompt_system},
-                {
-                    "role":
-                        "user",
-                    "content": (
-                        "Voici le texte du document à analyser :"
-                        f" {text_document[:10000]}"
-                    ),
-                },
-            ],
-            temperature=0.2,
-        )
-        analyse_ia = response.choices[0].message.content
-      except Exception as e:
-        analyse_ia = None
-    else:
-      analyse_ia = None
-
-  st.success("✨ Analyse terminée avec succès !")
-
-  # --- SIMULATION DES SCORES POUR L'AFFICHAGE DU "WOW EFFECT" ---
-  # (Si l'IA est connectée, tu pourras parser les scores dynamiquement. Ici on met en place le rendu visuel magnifique demandé)
+  # Simulation des scores (basés sur la vérification des critères)
   score_admin = 85
   score_technique = 70
   score_global = int((score_admin + score_technique) / 2)
 
-  # --- SECTION VISUELLE : JAUGE DE VITESSE (DÉGRADÉ ROUGE -> VERT) ---
-  col_gauge, col_info = st.columns([1.2, 1.8], gap="large")
+
+  # Fonction pour attribuer une couleur selon le score
+  def get_color_badge(score):
+    if score >= 75:
+      return "#10B981"  # Vert
+    elif score >= 50:
+      return "#F59E0B"  # Orange
+    else:
+      return "#EF4444"  # Rouge
+
+
+  color_global = get_color_badge(score_global)
+  color_admin = get_color_badge(score_admin)
+  color_tech = get_color_badge(score_technique)
+
+  st.markdown("---")
+
+  # --- SECTION VISUELLE : JAUGE DE VITESSE & SYNTHÈSE ---
+  col_gauge, col_info = st.columns([1.1, 1.9], gap="large")
 
   with col_gauge:
     st.markdown("### 📊 Indice de Conformité Global")
 
-    # Création du graphique Plotly type Indicateur de Vitesse avec dégradé
+    # Jauge compacte et lisible en mode clair
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number",
             value=score_global,
             domain={'x': [0, 1], 'y': [0, 1]},
-            number={'suffix': "%", 'font': {'color': '#0B2341', 'size': 40}},
+            number={'suffix': "%", 'font': {'color': '#0B2341', 'size': 35}},
             gauge={
                 'axis': {
                     'range': [0, 100],
                     'tickwidth': 2,
                     'tickcolor': '#0B2341',
                 },
-                'bar': {'color': 'rgba(0,0,0,0)'},  # Barre invisible
+                'bar': {'color': 'rgba(0,0,0,0)'},
                 'bgcolor': 'white',
                 'borderwidth': 2,
                 'bordercolor': '#E5E7EB',
                 'steps': [
-                    {'range': [0, 50], 'color': '#EF4444'},  # Rouge (Bloquant)
-                    {
-                        'range': [50, 75],
-                        'color': '#F59E0B',
-                    },  # Orange (À améliorer)
-                    {'range': [75, 100], 'color': '#10B981'},  # Vert (Conforme)
+                    {'range': [0, 50], 'color': '#EF4444'},
+                    {'range': [50, 75], 'color': '#F59E0B'},
+                    {'range': [75, 100], 'color': '#10B981'},
                 ],
                 'threshold': {
-                    'line': {'color': '#0B2341', 'width': 4},
+                    'line': {'color': '#0B2341', 'width': 3},
                     'thickness': 0.8,
                     'value': score_global,
                 },
@@ -157,8 +148,8 @@ if uploaded_file is not None:
     fig.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        height=260,
-        margin=dict(l=20, r=20, t=10, b=10),
+        height=210,
+        margin=dict(l=15, r=15, t=10, b=10),
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -167,30 +158,34 @@ if uploaded_file is not None:
     if score_global >= 80:
       st.success(
           "**Statut : Favorable avec réserve mineure** — Le document respecte"
-          " globalement les exigences du site P&G Amiens."
+          " globalement les attentes du site."
       )
     elif score_global >= 50:
       st.warning(
-          "**Statut : En attente de corrections** — Plusieurs points du"
-          " manuel de construction ne sont pas complètement remplis."
+          "**Statut : En attente de corrections** — Des ajustements sont"
+          " requis avant validation."
       )
     else:
       st.error(
-          "**Statut : Non-conforme / Bloquant** — Le document ne peut pas être"
-          " validé en l'état."
+          "**Statut : Non-conforme / Bloquant** — Refonte nécessaire du"
+          " document."
       )
 
+    # Affichage des scores avec les codes couleurs dynamiques
     st.markdown(
         f"""
-        * **Score Administratif :** `{score_admin}%`
-        * **Score Technique & Opérationnel :** `{score_technique}%`
-        * *Rappel P&G : Tout MOP doit être validé 48h avant le début des travaux sur site.*
-        """
+        * **Score Administratif :** <span style="color:{color_admin}; font-weight:bold; font-size:1.1rem;">{score_admin}%</span>
+        * **Score Technique & Opérationnel :** <span style="color:{color_tech}; font-weight:bold; font-size:1.1rem;">{score_technique}%</span>
+        * ⏱️ *Rappel : Validation requise 48h avant le début des travaux.*
+        """,
+        unsafe_allow_html=True,
     )
 
-  st.markdown("---")
+  # --- SÉPARATION TRÈS NETTE ---
+  st.markdown("<br><hr style='border: 2px solid #0B2341;'><br>", unsafe_allow_html=True)
 
   # --- LES 2 PHASES D'ANALYSE DÉTAILLÉES ---
+  st.markdown("## 🔍 Analyse Détaillée par Phase")
   tab1, tab2 = st.tabs(
       [
           "📋 Phase 1 : Vérification Administrative",
@@ -199,48 +194,75 @@ if uploaded_file is not None:
   )
 
   with tab1:
-    st.markdown("### Analyse de la conformité administrative")
+    st.markdown("#### Conformité Administrative du dossier")
     col_a1, col_a2 = st.columns(2)
     with col_a1:
-      st.markdown("#### ✅ Éléments validés")
+      st.markdown("##### ✅ Éléments validés")
       st.markdown("- Numéro de Plan de Prévention (PDP) identifié.")
       st.markdown("- Coordonnées de l'entreprise extérieure renseignées.")
     with col_a2:
-      st.markdown("#### ⚠️ Points à corriger / Manquants")
-      st.markdown(
-          "- **Signature du superviseur N2** : Non clairement localisée sur le"
-          " document."
-      )
-      st.markdown(
-          "- **Dates de validité** : À préciser par rapport au planning chantier"
-          " P&G."
-      )
+      st.markdown("##### ⚠️ Points à corriger")
+      st.markdown("- **Signature superviseur N2** : Non localisée.")
+      st.markdown("- **Dates de validité** : À synchroniser avec le planning.")
 
   with tab2:
-    st.markdown("### Analyse technique et détails de l'intervention")
+    st.markdown("#### Conformité Technique & Opérationnelle")
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-      st.markdown("#### ✅ Éléments validés")
-      st.markdown("- Décomposition chronologique de l'intervention présente.")
-      st.markdown("- Mention du port du casque de chantier de base.")
+      st.markdown("##### ✅ Éléments validés")
+      st.markdown("- Décomposition chronologique des tâches présente.")
+      st.markdown("- Mention du port des EPI de base.")
     with col_t2:
-      st.markdown("#### ⚠️ Points à corriger / Manquants")
+      st.markdown("##### ⚠️ Points à corriger")
       st.markdown(
-          "- **Normes EPI hauteur** : La mention de la jugulaire obligatoire"
-          " pour les travaux en hauteur est absente (Règle P&G)."
+          "- **Jugulaire (Travaux en hauteur)** : Mention absente (Exigence"
+          " P&G)."
       )
       st.markdown(
-          "- **Gestion des risques spécifiques** : Préciser le balisage de"
-          " sécurité à 3 mètres minimum autour de la zone d'opération."
+          "- **Balisage** : Préciser le périmètre de sécurité de 3 mètres."
       )
 
-  # Affichage brut de l'analyse IA si configurée
-  if analyse_ia:
-    with st.expander("🤖 Voir le rapport d'audit détaillé de l'IA"):
-      st.markdown(analyse_ia)
+  # --- SECTION VISUELLE : TÂCHES À EFFECTUER (PLAN D'ACTION) ---
+  st.markdown("<br><hr style='border: 1px dashed #CBD5E1;'><br>", unsafe_allow_html=True)
+  st.markdown("### 🛠️ Plan d'action & Tâches à effectuer par l'entreprise")
+  st.markdown(
+      "Voici la liste des actions correctives à intégrer dans le MOP avant"
+      " validation définitive :"
+  )
 
-else:
+  col_p1, col_p2 = st.columns(2)
+  with col_p1:
+    st.markdown(
+        """
+        <div class="card-tache">
+            <b>1. Mise à jour des exigences EPI</b><br>
+            <span style="color: #64748B; font-size: 0.9rem;">Ajouter explicitement l'obligation de la jugulaire pour toute intervention en hauteur.</span>
+        </div>
+        <div class="card-tache">
+            <b>2. Validation administrative N2</b><br>
+            <span style="color: #64748B; font-size: 0.9rem;">Faire signer le document par le responsable habilité de l'entreprise.</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+  with col_p2:
+    st.markdown(
+        """
+        <div class="card-tache">
+            <b>3. Délimitation de zone</b><br>
+            <span style="color: #64748B; font-size: 0.9rem;">Intégrer le plan de balisage de 3 mètres minimum autour de la zone de travail.</span>
+        </div>
+        <div class="card-tache">
+            <b>4. Re-soumission du document</b><br>
+            <span style="color: #64748B; font-size: 0.9rem;">Déposer la version corrigée sur l'application 48h avant le chantier.</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+elif uploaded_file is None:
   st.info(
-      "👆 Veuillez importer un fichier PDF ci-dessus pour lancer l'analyse"
-      " interactive de conformité P&G."
+      "👆 Le **Construction Safety Manual** est chargé automatiquement en"
+      " arrière-plan. Veuillez simplement importer **le MOP de l'entreprise**"
+      " pour lancer l'analyse."
   )

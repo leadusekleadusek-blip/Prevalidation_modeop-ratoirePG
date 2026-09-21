@@ -2,6 +2,7 @@ import os
 import pypdf
 import plotly.graph_objects as go
 import streamlit as st
+from fpdf import FPDF
 
 # Configuration de la page
 st.set_page_config(
@@ -121,7 +122,6 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None and text_manual != "":
   with st.spinner("Analyse du mode opératoire en cours..."):
-    # Lecture du MOP soumis
     reader_mop = pypdf.PdfReader(uploaded_file)
     text_mop = ""
     for page in reader_mop.pages:
@@ -182,24 +182,20 @@ if uploaded_file is not None and text_manual != "":
     # --- 4. RAISONNEMENT CONTEXTUEL SUR LES OUTILS ET ÉQUIPEMENTS ---
     suggestions_contexte = []
     
-    # Analyse Meuleuse / Disqueuse
     if "meuleuse" in text_mop_lower or "disqueuse" in text_mop_lower or "meuler" in text_mop_lower:
         if not any(w in text_mop_lower for w in ["écran facial", "visière", "lunettes"]):
-            suggestions_contexte.append("⚠️ **Outil (Meuleuse) :** Utilisation de meuleuse détectée sans mention claire d'un écran facial / lunettes de protection et de gants anti-coupure adaptés.")
+            suggestions_contexte.append("⚠️ Outil (Meuleuse) : Utilisation de meuleuse détectée sans mention claire d'un écran facial / lunettes de protection et de gants anti-coupure adaptés.")
         if "point chaud" not in taches_detectees:
-            suggestions_contexte.append("⚠️ **Outil (Meuleuse) :** L'usage d'une meuleuse génère des étincelles ; le rattacher obligatoirement aux exigences des **Travaux par point chaud** (extincteur à proximité, bâche ignifugée).")
+            suggestions_contexte.append("⚠️ Outil (Meuleuse) : L'usage d'une meuleuse génère des étincelles ; le rattacher obligatoirement aux exigences des Travaux par point chaud (extincteur à proximité, bâche ignifugée).")
 
-    # Analyse Travaux en hauteur & PIRL vs Ligne de vie
     if "pirl" in text_mop_lower or "plateforme" in text_mop_lower:
-        suggestions_contexte.append("ℹ️ **Équipement hauteur (PIRL) :** Utilisation d'une PIRL détectée. Parfait, pas besoin de prévoir de ligne de vie ou de harnais si la PIRL est à 3 de garde-corps intégrés conforme, mais vérifier sa stabilisante et son freinage.")
+        suggestions_contexte.append("ℹ️ Équipement hauteur (PIRL) : Utilisation d'une PIRL détectée. Parfait, pas besoin de prévoir de ligne de vie ou de harnais si la PIRL dispose de garde-corps intégrés conformes, mais vérifier sa stabilisation et son freinage.")
     elif "hauteur" in text_mop_lower and not any(w in text_mop_lower for w in ["pirl", "nacelle", "échafaudage"]):
-        suggestions_contexte.append("⚠️ **Travaux en hauteur :** Travail en hauteur mentionné sans préciser explicitement le moyen d'accès sécurisé (PIRL, échafaudage, PEMP) ni les mesures antichute.")
+        suggestions_contexte.append("⚠️ Travaux en hauteur : Travail en hauteur mentionné sans préciser explicitement le moyen d'accès sécurisé (PIRL, échafaudage, PEMP) ni les mesures antichute.")
 
-    # Analyse Produits Chimiques
     if "chimique" in text_mop_lower or "produit" in text_mop_lower:
-        suggestions_contexte.append("ℹ️ **Produits chimiques :** S'assurer que les Fiches de Données de Sécurité (FDS) associées sont jointes au dossier et que les EPI adaptés (gants spécifiques, lunettes, tablier) sont notifiés.")
+        suggestions_contexte.append("ℹ️ Produits chimiques : S'assurer que les Fiches de Données de Sécurité (FDS) associées sont jointes au dossier et que les EPI adaptés (gants spécifiques, lunettes, tablier) sont notifiés.")
 
-    # Score Global
     score_global = int((score_admin + score_technique) / 2)
 
 
@@ -218,7 +214,10 @@ if uploaded_file is not None and text_manual != "":
     st.markdown("---")
 
     # --- BANNIÈRE DE CONFORMITÉ EXPLICITE ---
-    if score_admin == 100 and score_technique >= 80 and len(admin_manquants) == 0:
+    tous_les_manquants = admin_manquants + tech_manquants
+    est_conforme = (score_admin == 100 and score_technique >= 80 and len(tous_les_manquants) == 0)
+    
+    if est_conforme:
         st.markdown('<div class="banner-conforme">✅ Mode opératoire conforme aux attentes P&G</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="banner-non-conforme">❌ Mode opératoire non conforme - Éléments manquants ou bloquants</div>', unsafe_allow_html=True)
@@ -369,7 +368,6 @@ if uploaded_file is not None and text_manual != "":
             " ce texte."
         )
 
-      # --- ANALYSE CONTEXTUELLE DES OUTILS & SÉCURITÉ ---
       if suggestions_contexte:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("#### 💡 Suggestions de Sécurité Contextuelles (Outils & EPI)")
@@ -387,22 +385,20 @@ if uploaded_file is not None and text_manual != "":
         " d'amélioration sécurité pour rendre le MOP conforme :"
     )
 
-    tous_les_manquants = admin_manquants + tech_manquants
-
     if tous_les_manquants or suggestions_contexte or score_global < 100:
       col_p1, col_p2 = st.columns(2)
       with col_p1:
         st.markdown("#### ❌ Points administratifs et formels à rajouter :")
         if admin_manquants:
             for item in admin_manquants:
-                st.markdown(f"- **{item}** : Intégrer cette information de manière explicite dans le document.")
+                st.markdown(f"- **{item}** : Intégrer cette information de manière explicite.")
         else:
             st.markdown("- Aucun manquement formel détecté.")
             
         st.markdown("#### ⚙️ Améliorations de structure technique :")
         if tech_manquants:
             for item in tech_manquants:
-                st.markdown(f"- **{item}** : Sructurer sous forme de tableau détaillé (Phase, Moyens, Risques, Prévention).")
+                st.markdown(f"- **{item}** : Structurer sous forme de tableau détaillé (Phase, Moyens, Risques, Prévention).")
         else:
             st.markdown("- Structure technique conforme.")
 
@@ -419,6 +415,114 @@ if uploaded_file is not None and text_manual != "":
           "🎉 Félicitations ! Le mode opératoire est complet et parfaitement"
           " aligné avec les exigences du Construction Safety Manual."
       )
+
+    # --- FONCTION DE NETTOYAGE POUR PDF (COMPATIBILITÉ ACCENTS) ---
+    def clean_pdf_text(text):
+      return (
+          text.replace("é", "e")
+          .replace("è", "e")
+          .replace("ê", "e")
+          .replace("à", "a")
+          .replace("â", "a")
+          .replace("ù", "u")
+          .replace("î", "i")
+          .replace("ï", "i")
+          .replace("ô", "o")
+          .replace("ç", "c")
+          .replace("É", "E")
+          .replace("Ê", "E")
+          .replace("À", "A")
+          .replace("⚠️", "[!] ")
+          .replace("✅", "[OK] ")
+          .replace("❌", "[X] ")
+          .replace("ℹ️", "[INFO] ")
+      )
+
+    # --- GÉNÉRATION DU RAPPORT PDF ---
+    class PDFReport(FPDF):
+      def header(self):
+        self.set_font("helvetica", "B", 14)
+        self.set_text_color(11, 35, 65) # Bleu P&G
+        self.cell(0, 10, clean_pdf_text("P&G AMIENS - RAPPORT D'AUDIT DE PRE-VALIDATION MOP"), 0, 1, "C")
+        self.ln(5)
+
+      def footer(self):
+        self.set_y(-15)
+        self.set_font("helvetica", "I", 8)
+        self.set_text_color(128, 128, 128)
+        self.cell(0, 10, clean_pdf_text(f"Page {self.page_no()}"), 0, 0, "C")
+
+    def create_pdf():
+      pdf = PDFReport()
+      pdf.add_page()
+      pdf.set_font("helvetica", "", 10)
+      pdf.set_text_color(0, 0, 0)
+
+      # Statut Global
+      statut_str = "MODE OPERATOIRE CONFORME" if est_conforme else "MODE OPERATOIRE NON CONFORME"
+      pdf.set_font("helvetica", "B", 12)
+      pdf.cell(0, 8, clean_pdf_text(f"STATUT : {statut_str}"), 0, 1)
+      pdf.ln(2)
+
+      # Scores
+      pdf.set_font("helvetica", "", 10)
+      pdf.cell(0, 6, clean_pdf_text(f"- Score Global de Conformite : {score_global}%"), 0, 1)
+      pdf.cell(0, 6, clean_pdf_text(f"- Score Administratif & Formel : {score_admin}%"), 0, 1)
+      pdf.cell(0, 6, clean_pdf_text(f"- Score Technique & Mise en forme : {score_technique}%"), 0, 1)
+      pdf.ln(5)
+
+      # Points Manquants
+      pdf.set_font("helvetica", "B", 11)
+      pdf.cell(0, 8, clean_pdf_text("1. ELEMENTS MANQUANTS / POINTS A CORRIGER"), 0, 1)
+      pdf.set_font("helvetica", "", 10)
+      if tous_les_manquants:
+        for item in tous_les_manquants:
+          pdf.multi_cell(0, 6, clean_pdf_text(f"  - {item}"))
+      else:
+        pdf.multi_cell(0, 6, clean_pdf_text("  Aucun manquement formel detecte."))
+      pdf.ln(5)
+
+      # Tâches à haut risque
+      pdf.set_font("helvetica", "B", 11)
+      pdf.cell(0, 8, clean_pdf_text("2. TACHES A HAUT RISQUE DETECTEES"), 0, 1)
+      pdf.set_font("helvetica", "", 10)
+      if taches_detectees:
+        for tache in taches_detectees:
+          pdf.multi_cell(0, 6, clean_pdf_text(f"  - {tache}"))
+      else:
+        pdf.multi_cell(0, 6, clean_pdf_text("  Aucune tache a haut risque majeure detectee."))
+      pdf.ln(5)
+
+      # Suggestions contextuelles
+      pdf.set_font("helvetica", "B", 11)
+      pdf.cell(0, 8, clean_pdf_text("3. SUGGESTIONS DE SECURITE & RECOMMANDATIONS"), 0, 1)
+      pdf.set_font("helvetica", "", 10)
+      if suggestions_contexte:
+        for sug in suggestions_contexte:
+          pdf.multi_cell(0, 6, clean_pdf_text(f"  - {sug}"))
+      else:
+        pdf.multi_cell(0, 6, clean_pdf_text("  Aucune remarque particuliere."))
+      pdf.ln(5)
+
+      pdf.set_font("helvetica", "I", 9)
+      pdf.multi_cell(0, 6, clean_pdf_text("Rappel : Tout mode operatoire doit etre valide au moins 48h avant le debut des interventions sur le site P&G Amiens."))
+
+      return pdf.output()
+
+    # --- A LA FIN : BOUTON DE TÉLÉCHARGEMENT DU RAPPORT PDF ---
+    st.markdown("<br><hr style='border: 1px solid #0B2341;'><br>", unsafe_allow_html=True)
+    st.markdown("### 📥 Télécharger le Rapport d'Audit Officiel")
+    st.markdown("Cliquez sur le bouton ci-dessous pour générer et télécharger la synthèse complète de l'audit au format **PDF** :")
+
+    pdf_bytes = create_pdf()
+
+    st.download_button(
+        label="📄 Générer et télécharger le rapport PDF",
+        data=pdf_bytes,
+        file_name="Rapport_Audit_MOP_PG_Amiens.pdf",
+        mime="application/pdf",
+        type="primary",
+    )
 
 elif uploaded_file is None:
   st.info(

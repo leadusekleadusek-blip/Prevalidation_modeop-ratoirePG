@@ -41,6 +41,28 @@ st.markdown(
             border-left: 5px solid #EF4444;
             margin-bottom: 8px;
         }
+        .banner-conforme {
+            background-color: #D1FAE5;
+            color: #065F46;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 6px solid #10B981;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .banner-non-conforme {
+            background-color: #FEE2E2;
+            color: #991B1B;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 6px solid #EF4444;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 20px;
+        }
     </style>
 """,
     unsafe_allow_html=True,
@@ -105,7 +127,6 @@ if uploaded_file is not None and text_manual != "":
     for page in reader_mop.pages:
       text_mop += page.extract_text() or ""
 
-  # Vérification si le PDF est vide (ex: scan image)
   if len(text_mop.strip()) < 20:
     st.error(
         "⚠️ Le document PDF importé semble être une image scannée ou ne"
@@ -115,106 +136,92 @@ if uploaded_file is not None and text_manual != "":
   else:
     st.success("✨ Document extrait avec succès !")
 
-    # --- CALCUL DYNAMIQUE DES SCORES ---
     text_mop_lower = text_mop.lower()
 
-    # 1. Critères Administratifs
+    # --- 1. CONTRÔLE DES POINTS ADMINISTRATIFS OBLIGATOIRES ---
     admin_criteres = {
-        "Plan de Prévention / PDP": [
-            "pdp",
-            "plan de prevention",
-            "prévention",
-        ],
-        "Dates de validité": ["date", "planning", "calendrier", "du ", " au "],
-        "Signatures / Responsable": [
-            "signature",
-            "signé",
-            "superviseur",
-            "n2",
-            "responsable",
-        ],
-        "Identification entreprise": [
-            "entreprise",
-            "société",
-            "intervenant",
-            "societe",
-        ],
+        "Dates de travaux prévus": ["date", "planning", "calendrier", "du ", " au ", "période"],
+        "Référence PDP": ["pdp", "plan de prévention", "plan de prevention"],
+        "Project Manager": ["project manager", "chef de projet", "responsable de projet", "chargé d'affaire"],
+        "Rédacteur avec N° de téléphone": ["rédacteur", "redacteur", "établi par", "contact", "tél", "telephone", "06", "07"],
+        "Nom de l'entreprise & Logo": ["entreprise", "société", "societe", "sarl", "sas", "logo"],
+        "Encart signature des intervenants": ["signature", "signé", "signataire", "visé par", "intervenants"],
     }
-    admin_valides = [
-        k
-        for k, mots in admin_criteres.items()
-        if any(m in text_mop_lower for m in mots)
-    ]
+    
+    admin_valides = [k for k, mots in admin_criteres.items() if any(m in text_mop_lower for m in mots)]
+    admin_manquants = [k for k in admin_criteres.keys() if k not in admin_valides]
     score_admin = int((len(admin_valides) / len(admin_criteres)) * 100)
 
-    # 2. Critères Techniques & Opérationnels
+    # --- 2. CONTRÔLE TECHNIQUE & FORMAT ---
     tech_criteres = {
-        "Décomposition des tâches": ["tâche", "phase", "étape", "operation"],
-        "Analyse des risques": ["risque", "chute", "danger", "prevention"],
-        "EPI & Normes (ex: jugulaire)": [
-            "jugulaire",
-            "casque",
-            "gant",
-            "epi",
-            "norme",
-        ],
-        "Balisage de zone": ["balisage", "périmètre", "zone", "sécurité", "3m"],
-    }
-    tech_valides = [
-        k
-        for k, mots in tech_criteres.items()
-        if any(m in text_mop_lower for m in mots)
-    ]
-
-    # --- Détection des 10 Tâches à Haut Risque (Standards P&G) ---
-    taches_haut_risque_ref = {
-        "Travaux par point chaud": ["point chaud", "soudure", "meulage", "feu"],
-        "Travaux électriques / sous tension": [
-            "électrique",
-            "electrique",
-            "sous tension",
-            "armoire",
-        ],
-        "Grutage / Levage": ["grutage", "levage", "grue", "charge lourde"],
-        "Espaces confinés": ["espace confiné", "cuve", "silo", "regard"],
-        "Travaux en hauteur": ["hauteur", "échafaudage", "nacelle", "toiture"],
-        "Démolition": ["démolition", "demolition", "casse"],
-        "Terrassement / Ouverture de sols": [
-            "terrassement",
-            "excavation",
-            "tranchée",
-            "sol",
-        ],
-        "Zone ATEX": ["atex", "explosive", "atmosphères"],
-        "Travail isolé": ["isolé", "isole", "seul"],
-        "Accès toiture": ["toiture", "toit", "terrasse"],
+        "Format Tableau (Phase / Moyens / Risques / Prévention)": ["phase", "étape", "moyen", "matériel", "risque", "danger", "prévention", "mesure"],
+        "Véracité & Chronologie des phases": ["chronologie", "séquence", "etape 1", "phase 1", "ensuite", "puis"],
+        "Adéquation des EPI (casque, gants, lunettes...)": ["epi", "casque", "gant", "lunettes", "chaussures", "jugulaire", "protection"],
     }
 
-    taches_detectees = [
-        nom
-        for nom, mots in taches_haut_risque_ref.items()
-        if any(m in text_mop_lower for m in mots)
-    ]
-
+    tech_valides = [k for k, mots in tech_criteres.items() if any(m in text_mop_lower for m in mots)]
+    tech_manquants = [k for k in tech_criteres.keys() if k not in tech_valides]
     score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
+
+    # --- 3. DÉTECTION DES 10 TÂCHES À HAUT RISQUE (Standards P&G) ---
+    taches_haut_risque_ref = {
+        "Travail en hauteur": ["hauteur", "échafaudage", "nacelle", "toiture", "pirl", "echelle"],
+        "Consignation et isolation des énergies (LOTO)": ["consignation", "loto", "isolation", "cadenassage", "energie"],
+        "Travail en espace confiné": ["espace confiné", "cuve", "silo", "regard", "espace confine"],
+        "Travaux par point chaud (soudures, découpes)": ["point chaud", "soudure", "meulage", "découpe", "feu", "soudage"],
+        "Manipulation de produits chimiques dangereux": ["chimique", "acide", "solvant", "produit dangereux", "fds", "fms"],
+        "Opérations de levage et manutention lourde": ["levage", "grue", "palonnier", "manutention lourde", "charge"],
+        "Circulation et conduite d'engins (chariots élévateurs)": ["chariot", "élévateur", "engin", "caces", "cariste", "circulation"],
+        "Interventions sur installations électriques sous tension": ["électrique", "electrique", "sous tension", "armoire", "habilitation"],
+        "Travaux d'excavation et creusement": ["excavation", "terrassement", "tranchée", "creusement", "sol"],
+        "Interventions sur conduites / équipements sous pression ou température": ["pression", "vapeur", "haute température", "conduite"],
+    }
+
+    taches_detectees = [nom for nom, mots in taches_haut_risque_ref.items() if any(m in text_mop_lower for m in mots)]
+
+    # --- 4. RAISONNEMENT CONTEXTUEL SUR LES OUTILS ET ÉQUIPEMENTS ---
+    suggestions_contexte = []
+    
+    # Analyse Meuleuse / Disqueuse
+    if "meuleuse" in text_mop_lower or "disqueuse" in text_mop_lower or "meuler" in text_mop_lower:
+        if not any(w in text_mop_lower for w in ["écran facial", "visière", "lunettes"]):
+            suggestions_contexte.append("⚠️ **Outil (Meuleuse) :** Utilisation de meuleuse détectée sans mention claire d'un écran facial / lunettes de protection et de gants anti-coupure adaptés.")
+        if "point chaud" not in taches_detectees:
+            suggestions_contexte.append("⚠️ **Outil (Meuleuse) :** L'usage d'une meuleuse génère des étincelles ; le rattacher obligatoirement aux exigences des **Travaux par point chaud** (extincteur à proximité, bâche ignifugée).")
+
+    # Analyse Travaux en hauteur & PIRL vs Ligne de vie
+    if "pirl" in text_mop_lower or "plateforme" in text_mop_lower:
+        suggestions_contexte.append("ℹ️ **Équipement hauteur (PIRL) :** Utilisation d'une PIRL détectée. Parfait, pas besoin de prévoir de ligne de vie ou de harnais si la PIRL est à 3 de garde-corps intégrés conforme, mais vérifier sa stabilisante et son freinage.")
+    elif "hauteur" in text_mop_lower and not any(w in text_mop_lower for w in ["pirl", "nacelle", "échafaudage"]):
+        suggestions_contexte.append("⚠️ **Travaux en hauteur :** Travail en hauteur mentionné sans préciser explicitement le moyen d'accès sécurisé (PIRL, échafaudage, PEMP) ni les mesures antichute.")
+
+    # Analyse Produits Chimiques
+    if "chimique" in text_mop_lower or "produit" in text_mop_lower:
+        suggestions_contexte.append("ℹ️ **Produits chimiques :** S'assurer que les Fiches de Données de Sécurité (FDS) associées sont jointes au dossier et que les EPI adaptés (gants spécifiques, lunettes, tablier) sont notifiés.")
+
+    # Score Global
     score_global = int((score_admin + score_technique) / 2)
 
 
-    # Fonction couleur
     def get_color_badge(score):
-      if score >= 75:
-        return "#10B981"  # Vert
+      if score >= 85:
+        return "#10B981"
       elif score >= 50:
-        return "#F59E0B"  # Orange
+        return "#F59E0B"
       else:
-        return "#EF4444"  # Rouge
-
+        return "#EF4444"
 
     color_global = get_color_badge(score_global)
     color_admin = get_color_badge(score_admin)
     color_tech = get_color_badge(score_technique)
 
     st.markdown("---")
+
+    # --- BANNIÈRE DE CONFORMITÉ EXPLICITE ---
+    if score_admin == 100 and score_technique >= 80 and len(admin_manquants) == 0:
+        st.markdown('<div class="banner-conforme">✅ Mode opératoire conforme aux attentes P&G</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="banner-non-conforme">❌ Mode opératoire non conforme - Éléments manquants ou bloquants</div>', unsafe_allow_html=True)
 
     # --- SECTION VISUELLE : JAUGE & SYNTHÈSE ---
     col_gauge, col_info = st.columns([1.1, 1.9], gap="large")
@@ -240,8 +247,8 @@ if uploaded_file is not None and text_manual != "":
                   'bordercolor': '#E5E7EB',
                   'steps': [
                       {'range': [0, 50], 'color': '#EF4444'},
-                      {'range': [50, 75], 'color': '#F59E0B'},
-                      {'range': [75, 100], 'color': '#10B981'},
+                      {'range': [50, 85], 'color': '#F59E0B'},
+                      {'range': [85, 100], 'color': '#10B981'},
                   ],
                   'threshold': {
                       'line': {'color': '#0B2341', 'width': 3},
@@ -261,28 +268,27 @@ if uploaded_file is not None and text_manual != "":
 
     with col_info:
       st.markdown("### 🎯 Synthèse de l'évaluation P&G")
-      if score_global >= 75:
+      if score_global >= 85:
         st.success(
-            "**Statut : Favorable avec réserve mineure** — Le document respecte"
-            " globalement les attentes du site."
+            "**Statut : Favorable** — Le mode opératoire respecte les"
+            " critères administratifs et techniques du site."
         )
       elif score_global >= 50:
         st.warning(
-            "**Statut : En attente de corrections** — Des ajustements sont"
-            " requis avant validation."
+            "**Statut : En attente de corrections** — Des points obligatoires"
+            " sont manquants ou incomplets."
         )
       else:
         st.error(
-            "**Statut : Non-conforme / Bloquant** — Refonte nécessaire du"
-            " document."
+            "**Statut : Non-conforme / Bloquant** — Refonte nécessaire avant"
+            " validation."
         )
 
-      # Correction du nom de variable score_technique ici :
       st.markdown(
           f"""
-            * **Score Administratif :** <span style="color:{color_admin}; font-weight:bold; font-size:1.1rem;">{score_admin}%</span>
-            * **Score Technique & Opérationnel :** <span style="color:{color_tech}; font-weight:bold; font-size:1.1rem;">{score_technique}%</span>
-            * ⏱️ *Rappel : Validation requise 48h avant le début des travaux.*
+            * **Score Administratif & Formel :** <span style="color:{color_admin}; font-weight:bold; font-size:1.1rem;">{score_admin}%</span>
+            * **Score Technique & Mise en forme :** <span style="color:{color_tech}; font-weight:bold; font-size:1.1rem;">{score_technique}%</span>
+            * ⏱️ *Rappel P&G : Validation requise 48h avant le début des travaux.*
             """,
           unsafe_allow_html=True,
       )
@@ -296,8 +302,8 @@ if uploaded_file is not None and text_manual != "":
     st.markdown("## 🔍 Analyse Détaillée par Phase")
     tab1, tab2 = st.tabs(
         [
-            "📋 Phase 1 : Vérification Administrative",
-            "⚙️ Phase 2 : Contenu & Détails Opérationnels",
+            "📋 Phase 1 : Vérification Administrative & Formelle",
+            "⚙️ Phase 2 : Contenu Technique & Tâches à Haut Risque",
         ]
     )
 
@@ -305,43 +311,37 @@ if uploaded_file is not None and text_manual != "":
       st.markdown("#### Conformité Administrative du dossier")
       col_a1, col_a2 = st.columns(2)
       with col_a1:
-        st.markdown("##### ✅ Éléments détectés")
+        st.markdown("##### ✅ Éléments validés (Vert)")
         if admin_valides:
           for el in admin_valides:
-            st.markdown(f"- {el}")
+            st.markdown(f"- ✅ {el}")
         else:
-          st.markdown("- Aucun élément administratif clé détecté.")
+          st.markdown("- Aucun critère validé.")
       with col_a2:
-        st.markdown("##### ⚠️ Points manquants ou non détectés")
-        admin_manquants = [
-            k for k in admin_criteres.keys() if k not in admin_valides
-        ]
+        st.markdown("##### ❌ Éléments manquants (Rouge / À compléter)")
         if admin_manquants:
           for el in admin_manquants:
-            st.markdown(f"- **{el}** : À préciser dans le document.")
+            st.markdown(f"- ❌ **{el}** : Point manquant dans le MOP.")
         else:
-          st.markdown("- Tous les critères administratifs sont présents !")
+          st.markdown("- ✅ Tous les points administratifs requis sont présents !")
 
     with tab2:
-      st.markdown("#### Conformité Technique & Opérationnelle")
+      st.markdown("#### Conformité Technique & Structuration")
       col_t1, col_t2 = st.columns(2)
       with col_t1:
-        st.markdown("##### ✅ Éléments détectés")
+        st.markdown("##### ✅ Éléments validés (Vert)")
         if tech_valides:
           for el in tech_valides:
-            st.markdown(f"- {el}")
+            st.markdown(f"- ✅ {el}")
         else:
-          st.markdown("- Aucun critère technique clé détecté.")
+          st.markdown("- Aucun critère technique validé.")
       with col_t2:
-        st.markdown("##### ⚠️ Points manquants ou non détectés")
-        tech_manquants = [
-            k for k in tech_criteres.keys() if k not in tech_valides
-        ]
+        st.markdown("##### ❌ Éléments manquants (Rouge / À compléter)")
         if tech_manquants:
           for el in tech_manquants:
-            st.markdown(f"- **{el}** : Mention absente (Exigence P&G).")
+            st.markdown(f"- ❌ **{el}** : Structure à revoir.")
         else:
-          st.markdown("- Tous les critères techniques sont validés !")
+          st.markdown("- ✅ Structure technique validée.")
 
       # --- ENCART DÉDIÉ AUX TÂCHES À HAUT RISQUE ---
       st.markdown("<br>", unsafe_allow_html=True)
@@ -351,123 +351,78 @@ if uploaded_file is not None and text_manual != "":
       if taches_detectees:
         st.warning(
             f"Attention : **{len(taches_detectees)} tâche(s) à haut risque"
-            f" identifiée(s)** dans ce mode opératoire. Des permis"
-            f" spécifiques / consignes renforcées sont obligatoires[cite: 2]."
+            f" identifiée(s)** dans ce mode opératoire[cite: 2]."
         )
         for tache in taches_detectees:
           st.markdown(
               f"""
                     <div class="card-hr">
-                        <b>⚠️ Tâche à haut risque détectée :</b> {tache}
+                        <b>⚠️ Activité à haut risque détectée :</b> {tache} <br>
+                        <span style="font-size:0.85rem; color:#7F1D1D;">Vérifier l'adéquation des permis de travail et consignes spécifiques (LOTO, Point Chaud, etc.).</span>
                     </div>
                     """,
               unsafe_allow_html=True,
           )
       else:
         st.info(
-            "✅ Aucune tâche à haut risque majeure détectée automatiquement par"
-            " mots-clés dans ce document."
+            "✅ Aucune tâche à haut risque majeure détectée par mots-clés dans"
+            " ce texte."
         )
 
-    # --- SECTION D'AUDIT CROISÉ INTÉGRÉ (AVEC LE MANUEL P&G) ---
+      # --- ANALYSE CONTEXTUELLE DES OUTILS & SÉCURITÉ ---
+      if suggestions_contexte:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### 💡 Suggestions de Sécurité Contextuelles (Outils & EPI)")
+        for sug in suggestions_contexte:
+            st.markdown(f"- {sug}")
+
+    # --- LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER ET PISTES D'AMÉLIORATION ---
     st.markdown(
         "<br><hr style='border: 2px solid #0B2341;'><br>",
         unsafe_allow_html=True,
     )
-    st.markdown("### 🛡️ Rapport d'Audit Croisé (Manuel P&G vs MOP)")
+    st.markdown("### 🛠️ Liste Détaillée des Éléments à Compléter & Suggestions")
     st.markdown(
-        "Analyse comparative instantanée de la cohérence du mode opératoire"
-        " par rapport aux exigences du Construction Safety Manual."
+        "Voici le détail des points en **rouge** à rectifier et les pistes"
+        " d'amélioration sécurité pour rendre le MOP conforme :"
     )
 
-    if st.button("Lancer l'audit de conformité croisé", type="primary"):
-      with st.spinner("Génération du rapport d'audit de sécurité en cours..."):
-        st.success("✅ Audit croisé réalisé avec succès par l'application !")
+    tous_les_manquants = admin_manquants + tech_manquants
 
-        st.markdown("#### 📝 Synthèse de l'expertise de conformité")
-        st.markdown(
-            f"- **Volume de référence analysé :** {len(text_manual)} caractères"
-            " issus du Construction Safety Manual."
-        )
-        st.markdown(
-            f"- **Volume du MOP audité :** {len(text_mop)} caractères."
-        )
-
-        if len(taches_detectees) > 0:
-          st.warning(
-              "⚠️ **Alerte Activités à Haut Risque :** Le document intègre des"
-              f" opérations sensibles ({', '.join(taches_detectees)}). Vous"
-              " devez impérativement vérifier que les permis de travail"
-              " associés (permis de feu, consignation, etc.) sont joints et"
-              f" validés par le service HSE P&G[cite: 2]."
-          )
-        else:
-          st.info(
-              "ℹ️ Aucune activité à haut risque critique n'a été mise en"
-              " évidence dans le texte scanné du MOP."
-          )
-
-        if score_global >= 75:
-          st.markdown(
-              "🟢 **Conclusion de l'audit :** Le niveau global de conformité"
-              " avec le manuel de construction est satisfaisant. Les mesures"
-              " de prévention de base sont mentionnées."
-          )
-        else:
-          st.markdown(
-              "🔴 **Conclusion de l'audit :** Des écarts majeurs ou des"
-              " omissions par rapport aux standards P&G ont été détectés. Une"
-              " révision du mode opératoire est requise avant toute"
-              " intervention sur site."
-          )
-
-    # --- PLAN D'ACTION ---
-    st.markdown(
-        "<br><hr style='border: 1px dashed #CBD5E1;'><br>",
-        unsafe_allow_html=True,
-    )
-    st.markdown("### 🛠️ Plan d'action & Tâches à effectuer par l'entreprise")
-    st.markdown("Voici les axes d'amélioration générés d'après l'analyse :")
-
-    if score_global < 100:
+    if tous_les_manquants or suggestions_contexte or score_global < 100:
       col_p1, col_p2 = st.columns(2)
       with col_p1:
-        st.markdown(
-            """
-                <div class="card-tache">
-                    <b>1. Compléter les sections manquantes</b><br>
-                    <span style="color: #64748B; font-size: 0.9rem;">Reprendre les points signalés ci-dessus pour les expliciter dans le MOP.</span>
-                </div>
-                <div class="card-tache">
-                    <b>2. Valider les exigences P&G</b><br>
-                    <span style="color: #64748B; font-size: 0.9rem;">S'assurer que les consignes spécifiques du site (balisage, EPI) sont rédigées.</span>
-                </div>
-                """,
-            unsafe_allow_html=True,
-        )
+        st.markdown("#### ❌ Points administratifs et formels à rajouter :")
+        if admin_manquants:
+            for item in admin_manquants:
+                st.markdown(f"- **{item}** : Intégrer cette information de manière explicite dans le document.")
+        else:
+            st.markdown("- Aucun manquement formel détecté.")
+            
+        st.markdown("#### ⚙️ Améliorations de structure technique :")
+        if tech_manquants:
+            for item in tech_manquants:
+                st.markdown(f"- **{item}** : Sructurer sous forme de tableau détaillé (Phase, Moyens, Risques, Prévention).")
+        else:
+            st.markdown("- Structure technique conforme.")
+
       with col_p2:
-        st.markdown(
-            """
-                <div class="card-tache">
-                    <b>3. Validation des signatures</b><br>
-                    <span style="color: #64748B; font-size: 0.9rem;">Vérifier la présence des noms et signatures du superviseur N2 et de l'entreprise.</span>
-                </div>
-                <div class="card-tache">
-                    <b>4. Re-soumission du document</b><br>
-                    <span style="color: #64748B; font-size: 0.9rem;">Déposer la version corrigée sur l'application 48h avant le chantier.</span>
-                </div>
-                """,
-            unsafe_allow_html=True,
-        )
+        st.markdown("#### 🛡️ Recommandations & Suggestions Sécurité sur-mesure :")
+        if suggestions_contexte:
+            for s in suggestions_contexte:
+                st.markdown(f"- {s}")
+        if len(taches_detectees) > 0:
+            st.markdown(f"- **Permis requis :** Assurez-vous que les permis associés aux tâches identifiées ({', '.join(taches_detectees)}) sont formalisés[cite: 2].")
+        st.markdown("- **Délai de soumission :** Transmettre la version corrigée au moins 48h avant le début des travaux sur le site P&G Amiens.")
     else:
       st.success(
-          "🎉 Félicitations ! Le document remplit l'ensemble des critères"
-          " contrôlés par rapport au manuel P&G."
+          "🎉 Félicitations ! Le mode opératoire est complet et parfaitement"
+          " aligné avec les exigences du Construction Safety Manual."
       )
 
 elif uploaded_file is None:
   st.info(
       "👆 Le **Construction Safety Manual** est chargé automatiquement en"
       " arrière-plan. Veuillez simplement importer **le MOP de l'entreprise**"
-      " pour lancer l'analyse dynamique."
+      " pour lancer l'analyse complète."
   )

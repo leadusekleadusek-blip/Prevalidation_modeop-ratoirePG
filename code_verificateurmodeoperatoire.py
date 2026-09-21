@@ -70,7 +70,6 @@ with header_col2:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- CHARGEMENT AUTOMATIQUE DU MANUEL P&G DEPUIS LE REPO GITHUB ---
-# Recherche automatique robuste du fichier de référence
 MANUAL_PATH = "python_constructionsafetymanuel.pdf"
 if not os.path.exists(MANUAL_PATH):
   for f in os.listdir("."):
@@ -278,10 +277,11 @@ if uploaded_file is not None and text_manual != "":
             " document."
         )
 
+      # Correction du nom de variable score_technique ici :
       st.markdown(
           f"""
             * **Score Administratif :** <span style="color:{color_admin}; font-weight:bold; font-size:1.1rem;">{score_admin}%</span>
-            * **Score Technique & Opérationnel :** <span style="color:{color_tech}; font-weight:bold; font-size:1.1rem;">{score_tech}%</span>
+            * **Score Technique & Opérationnel :** <span style="color:{color_tech}; font-weight:bold; font-size:1.1rem;">{score_technique}%</span>
             * ⏱️ *Rappel : Validation requise 48h avant le début des travaux.*
             """,
           unsafe_allow_html=True,
@@ -351,8 +351,8 @@ if uploaded_file is not None and text_manual != "":
       if taches_detectees:
         st.warning(
             f"Attention : **{len(taches_detectees)} tâche(s) à haut risque"
-            " identifiée(s)** dans ce mode opératoire. Des permis"
-            " spécifiques / consignes renforcées sont obligatoires[cite: 2]."
+            f" identifiée(s)** dans ce mode opératoire. Des permis"
+            f" spécifiques / consignes renforcées sont obligatoires[cite: 2]."
         )
         for tache in taches_detectees:
           st.markdown(
@@ -382,7 +382,6 @@ if uploaded_file is not None and text_manual != "":
 
     if st.button("Lancer l'audit de conformité croisé", type="primary"):
       with st.spinner("Génération du rapport d'audit de sécurité en cours..."):
-        # Logique d'analyse comparative intégrée directement dans l'application
         st.success("✅ Audit croisé réalisé avec succès par l'application !")
 
         st.markdown("#### 📝 Synthèse de l'expertise de conformité")
@@ -394,14 +393,13 @@ if uploaded_file is not None and text_manual != "":
             f"- **Volume du MOP audité :** {len(text_mop)} caractères."
         )
 
-        # Rapport intelligent généré selon les éléments trouvés ou manquants
         if len(taches_detectees) > 0:
           st.warning(
               "⚠️ **Alerte Activités à Haut Risque :** Le document intègre des"
               f" opérations sensibles ({', '.join(taches_detectees)}). Vous"
               " devez impérativement vérifier que les permis de travail"
               " associés (permis de feu, consignation, etc.) sont joints et"
-              " validés par le service HSE P&G[cite: 2]."
+              f" validés par le service HSE P&G[cite: 2]."
           )
         else:
           st.info(

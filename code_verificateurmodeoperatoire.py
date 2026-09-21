@@ -442,7 +442,7 @@ if uploaded_file is not None and text_manual != "":
     class PDFReport(FPDF):
       def header(self):
         self.set_font("helvetica", "B", 14)
-        self.set_text_color(11, 35, 65) # Bleu P&G
+        self.set_text_color(11, 35, 65)
         self.cell(0, 10, clean_pdf_text("P&G AMIENS - RAPPORT D'AUDIT DE PRE-VALIDATION MOP"), 0, 1, "C")
         self.ln(5)
 
@@ -461,53 +461,53 @@ if uploaded_file is not None and text_manual != "":
       # Statut Global
       statut_str = "MODE OPERATOIRE CONFORME" if est_conforme else "MODE OPERATOIRE NON CONFORME"
       pdf.set_font("helvetica", "B", 12)
-      pdf.cell(0, 8, clean_pdf_text(f"STATUT : {statut_str}"), 0, 1)
+      pdf.cell(190, 8, clean_pdf_text(f"STATUT : {statut_str}"), 0, 1)
       pdf.ln(2)
 
       # Scores
       pdf.set_font("helvetica", "", 10)
-      pdf.cell(0, 6, clean_pdf_text(f"- Score Global de Conformite : {score_global}%"), 0, 1)
-      pdf.cell(0, 6, clean_pdf_text(f"- Score Administratif & Formel : {score_admin}%"), 0, 1)
-      pdf.cell(0, 6, clean_pdf_text(f"- Score Technique & Mise en forme : {score_technique}%"), 0, 1)
+      pdf.cell(190, 6, clean_pdf_text(f"- Score Global de Conformite : {score_global}%"), 0, 1)
+      pdf.cell(190, 6, clean_pdf_text(f"- Score Administratif & Formel : {score_admin}%"), 0, 1)
+      pdf.cell(190, 6, clean_pdf_text(f"- Score Technique & Mise en forme : {score_technique}%"), 0, 1)
       pdf.ln(5)
 
       # Points Manquants
       pdf.set_font("helvetica", "B", 11)
-      pdf.cell(0, 8, clean_pdf_text("1. ELEMENTS MANQUANTS / POINTS A CORRIGER"), 0, 1)
+      pdf.cell(190, 8, clean_pdf_text("1. ELEMENTS MANQUANTS / POINTS A CORRIGER"), 0, 1)
       pdf.set_font("helvetica", "", 10)
       if tous_les_manquants:
         for item in tous_les_manquants:
-          pdf.multi_cell(0, 6, clean_pdf_text(f"  - {item}"))
+          pdf.multi_cell(190, 6, clean_pdf_text(f"  - {item}"))
       else:
-        pdf.multi_cell(0, 6, clean_pdf_text("  Aucun manquement formel detecte."))
+        pdf.multi_cell(190, 6, clean_pdf_text("  Aucun manquement formel detecte."))
       pdf.ln(5)
 
       # Tâches à haut risque
       pdf.set_font("helvetica", "B", 11)
-      pdf.cell(0, 8, clean_pdf_text("2. TACHES A HAUT RISQUE DETECTEES"), 0, 1)
+      pdf.cell(190, 8, clean_pdf_text("2. TACHES A HAUT RISQUE DETECTEES"), 0, 1)
       pdf.set_font("helvetica", "", 10)
       if taches_detectees:
         for tache in taches_detectees:
-          pdf.multi_cell(0, 6, clean_pdf_text(f"  - {tache}"))
+          pdf.multi_cell(190, 6, clean_pdf_text(f"  - {tache}"))
       else:
-        pdf.multi_cell(0, 6, clean_pdf_text("  Aucune tache a haut risque majeure detectee."))
+        pdf.multi_cell(190, 6, clean_pdf_text("  Aucune tache a haut risque majeure detectee."))
       pdf.ln(5)
 
       # Suggestions contextuelles
       pdf.set_font("helvetica", "B", 11)
-      pdf.cell(0, 8, clean_pdf_text("3. SUGGESTIONS DE SECURITE & RECOMMANDATIONS"), 0, 1)
+      pdf.cell(190, 8, clean_pdf_text("3. SUGGESTIONS DE SECURITE & RECOMMANDATIONS"), 0, 1)
       pdf.set_font("helvetica", "", 10)
       if suggestions_contexte:
         for sug in suggestions_contexte:
-          pdf.multi_cell(0, 6, clean_pdf_text(f"  - {sug}"))
+          pdf.multi_cell(190, 6, clean_pdf_text(f"  - {sug}"))
       else:
-        pdf.multi_cell(0, 6, clean_pdf_text("  Aucune remarque particuliere."))
+        pdf.multi_cell(190, 6, clean_pdf_text("  Aucune remarque particuliere."))
       pdf.ln(5)
 
       pdf.set_font("helvetica", "I", 9)
-      pdf.multi_cell(0, 6, clean_pdf_text("Rappel : Tout mode operatoire doit etre valide au moins 48h avant le debut des interventions sur le site P&G Amiens."))
+      pdf.multi_cell(190, 6, clean_pdf_text("Rappel : Tout mode operatoire doit etre valide au moins 48h avant le debut des interventions sur le site P&G Amiens."))
 
-      return pdf.output()
+      return bytes(pdf.output())
 
     # --- A LA FIN : BOUTON DE TÉLÉCHARGEMENT DU RAPPORT PDF ---
     st.markdown("<br><hr style='border: 1px solid #0B2341;'><br>", unsafe_allow_html=True)

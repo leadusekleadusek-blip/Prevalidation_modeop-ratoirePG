@@ -75,7 +75,7 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None and text_manual != "":
   with st.spinner(
-      "🔄 Analyse croisée entre le Manuel P&G et le MOP de l'entreprise..."
+      "🔄 Analyse croisée dynamique entre le Manuel P&G et le MOP..."
   ):
     # Lecture du MOP soumis
     reader_mop = pypdf.PdfReader(uploaded_file)
@@ -85,9 +85,46 @@ if uploaded_file is not None and text_manual != "":
 
   st.success("✨ Analyse croisée terminée avec succès !")
 
-  # Simulation des scores (basés sur la vérification des critères)
-  score_admin = 85
-  score_technique = 70
+  # --- CALCUL DYNAMIQUE DES SCORES BASÉ SUR LE CONTENU DU PDF ---
+  text_mop_lower = text_mop.lower()
+
+  # 1. Critères Administratifs
+  admin_criteres = {
+      "Plan de Prévention / PDP": ["pdp", "plan de prévention"],
+      "Dates de validité": ["date", "planning", "calendrier"],
+      "Signatures / Responsable": ["signature", "signé", "superviseur", "n2"],
+      "Identification entreprise": ["entreprise", "société", "intervenant"],
+  }
+  admin_valides = [
+      k for k, mots in admin_criteres.items() if any(m in text_mop_lower for m in mots)
+  ]
+  score_admin = int((len(admin_valides) / len(admin_criteres)) * 100)
+
+  # 2. Critères Techniques & Opérationnels (exigences P&G)
+  tech_criteres = {
+      "Décomposition des tâches": ["tâche", "phase", "étape", "opération"],
+      "Analyse des risques": ["risque", "chute", "danger", "prévention"],
+      "EPI & Normes (ex: jugulaire)": [
+          "jugulaire",
+          "casque",
+          "gant",
+          "epi",
+          "norme",
+      ],
+      "Balisage de zone": ["balisage", "périmètre", "zone de sécurité", "3m"],
+      "Gestion des tâches à haut risque": [
+          "permis",
+          "feu",
+          "espace confiné",
+          "conconsignation",
+      ],
+  }
+  tech_valides = [
+      k for k, mots in tech_criteres.items() if any(m in text_mop_lower for m in mots)
+  ]
+  score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
+
+  # Score Global (Moyenne des deux)
   score_global = int((score_admin + score_technique) / 2)
 
 
@@ -153,7 +190,7 @@ if uploaded_file is not None and text_manual != "":
 
   with col_info:
     st.markdown("### 🎯 Synthèse de l'évaluation P&G")
-    if score_global >= 80:
+    if score_global >= 75:
       st.success(
           "**Statut : Favorable avec réserve mineure** — Le document respecte"
           " globalement les attentes du site."
@@ -169,7 +206,7 @@ if uploaded_file is not None and text_manual != "":
           " document."
       )
 
-    # Affichage des scores avec les codes couleurs dynamiques
+    # Affichage des scores dynamiques avec les codes couleurs
     st.markdown(
         f"""
         * **Score Administratif :** <span style="color:{color_admin}; font-weight:bold; font-size:1.1rem;">{score_admin}%</span>
@@ -195,72 +232,89 @@ if uploaded_file is not None and text_manual != "":
     st.markdown("#### Conformité Administrative du dossier")
     col_a1, col_a2 = st.columns(2)
     with col_a1:
-      st.markdown("##### ✅ Éléments validés")
-      st.markdown("- Numéro de Plan de Prévention (PDP) identifié.")
-      st.markdown("- Coordonnées de l'entreprise extérieure renseignées.")
+      st.markdown("##### ✅ Éléments détectés")
+      if admin_valides:
+        for el in admin_valides:
+          st.markdown(f"- {el}")
+      else:
+        st.markdown("- Aucun élément administratif clé détecté.")
     with col_a2:
-      st.markdown("##### ⚠️ Points à corriger")
-      st.markdown("- **Signature superviseur N2** : Non localisée.")
-      st.markdown("- **Dates de validité** : À synchroniser avec le planning.")
+      st.markdown("##### ⚠️ Points manquants ou non détectés")
+      admin_manquants = [
+          k for k in admin_criteres.keys() if k not in admin_valides
+      ]
+      if admin_manquants:
+        for el in admin_manquants:
+          st.markdown(f"- **{el}** : À préciser dans le document.")
+      else:
+        st.markdown("- Tous les critères administratifs sont présents !")
 
   with tab2:
     st.markdown("#### Conformité Technique & Opérationnelle")
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-      st.markdown("##### ✅ Éléments validés")
-      st.markdown("- Décomposition chronologique des tâches présente.")
-      st.markdown("- Mention du port des EPI de base.")
+      st.markdown("##### ✅ Éléments détectés")
+      if tech_valides:
+        for el in tech_valides:
+          st.markdown(f"- {el}")
+      else:
+        st.markdown("- Aucun critère technique clé détecté.")
     with col_t2:
-      st.markdown("##### ⚠️ Points à corriger")
-      st.markdown(
-          "- **Jugulaire (Travaux en hauteur)** : Mention absente (Exigence"
-          " P&G)."
-      )
-      st.markdown(
-          "- **Balisage** : Préciser le périmètre de sécurité de 3 mètres."
-      )
+      st.markdown("##### ⚠️ Points manquants ou non détectés")
+      tech_manquants = [k for k in tech_criteres.keys() if k not in tech_valides]
+      if tech_manquants:
+        for el in tech_manquants:
+          st.markdown(f"- **{el}** : Mention absente (Exigence P&G).")
+      else:
+        st.markdown("- Tous les critères techniques sont validés !")
 
   # --- SECTION VISUELLE : TÂCHES À EFFECTUER (PLAN D'ACTION) ---
   st.markdown("<br><hr style='border: 1px dashed #CBD5E1;'><br>", unsafe_allow_html=True)
   st.markdown("### 🛠️ Plan d'action & Tâches à effectuer par l'entreprise")
   st.markdown(
-      "Voici la liste des actions correctives à intégrer dans le MOP avant"
-      " validation définitive :"
+      "Voici les axes d'amélioration générés automatiquement d'après l'analyse"
+      " du document :"
   )
 
-  col_p1, col_p2 = st.columns(2)
-  with col_p1:
-    st.markdown(
-        """
-        <div class="card-tache">
-            <b>1. Mise à jour des exigences EPI</b><br>
-            <span style="color: #64748B; font-size: 0.9rem;">Ajouter explicitement l'obligation de la jugulaire pour toute intervention en hauteur.</span>
-        </div>
-        <div class="card-tache">
-            <b>2. Validation administrative N2</b><br>
-            <span style="color: #64748B; font-size: 0.9rem;">Faire signer le document par le responsable habilité de l'entreprise.</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-  with col_p2:
-    st.markdown(
-        """
-        <div class="card-tache">
-            <b>3. Délimitation de zone</b><br>
-            <span style="color: #64748B; font-size: 0.9rem;">Intégrer le plan de balisage de 3 mètres minimum autour de la zone de travail.</span>
-        </div>
-        <div class="card-tache">
-            <b>4. Re-soumission du document</b><br>
-            <span style="color: #64748B; font-size: 0.9rem;">Déposer la version corrigée sur l'application 48h avant le chantier.</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
+  if score_global < 100:
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+      st.markdown(
+          """
+            <div class="card-tache">
+                <b>1. Compléter les sections manquantes</b><br>
+                <span style="color: #64748B; font-size: 0.9rem;">Reprendre les points signalés en orange/rouge ci-dessus pour les expliciter dans le MOP.</span>
+            </div>
+            <div class="card-tache">
+                <b>2. Valider les exigences P&G</b><br>
+                <span style="color: #64748B; font-size: 0.9rem;">S'assurer que les consignes spécifiques du site (balisage, EPI) sont clairement rédigées.</span>
+            </div>
+            """,
+          unsafe_allow_html=True,
+      )
+    with col_p2:
+      st.markdown(
+          """
+            <div class="card-tache">
+                <b>3. Validation des signatures</b><br>
+                <span style="color: #64748B; font-size: 0.9rem;">Vérifier la présence des noms et signatures du superviseur N2 et de l'entreprise.</span>
+            </div>
+            <div class="card-tache">
+                <b>4. Re-soumission du document</b><br>
+                <span style="color: #64748B; font-size: 0.9rem;">Déposer la version corrigée sur l'application 48h avant le début du chantier.</span>
+            </div>
+            """,
+          unsafe_allow_html=True,
+      )
+  else:
+    st.success(
+        "🎉 Félicitations ! Le document remplit l'ensemble des critères"
+        " contrôlés par rapport au manuel P&G."
     )
 
 elif uploaded_file is None:
   st.info(
       "👆 Le **Construction Safety Manual** est chargé automatiquement en"
       " arrière-plan. Veuillez simplement importer **le MOP de l'entreprise**"
-      " pour lancer l'analyse."
+      " pour lancer l'analyse dynamique."
   )

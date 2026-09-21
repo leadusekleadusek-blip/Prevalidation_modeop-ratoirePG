@@ -35,6 +35,13 @@ st.markdown(
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             margin-bottom: 10px;
         }
+        .card-hr {
+            background-color: #FEF2F2;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 5px solid #EF4444;
+            margin-bottom: 8px;
+        }
     </style>
 """,
     unsafe_allow_html=True,
@@ -44,7 +51,7 @@ st.markdown(
 header_col1, header_col2 = st.columns([1, 6], gap="medium")
 
 with header_col1:
-  logo_path = "P&G_Logo.svg.webp"
+  logo_path = "Procter_&_Gamble_logo2.svg"
   if os.path.exists(logo_path):
     st.image(logo_path, width=110)
   else:
@@ -87,7 +94,8 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None and text_manual != "":
-  with st.spinner("🔄 Analyse et extraction du document en cours..."):
+  # Message demandée explicitement lors de l'analyse
+  with st.spinner("Analyse du mode opératoire en cours..."):
     # Lecture du MOP soumis
     reader_mop = pypdf.PdfReader(uploaded_file)
     text_mop = ""
@@ -148,21 +156,44 @@ if uploaded_file is not None and text_manual != "":
             "norme",
         ],
         "Balisage de zone": ["balisage", "périmètre", "zone", "sécurité", "3m"],
-        "Gestion des tâches à haut risque": [
-            "permis",
-            "feu",
-            "confiné",
-            "consignation",
-        ],
     }
     tech_valides = [
         k
         for k, mots in tech_criteres.items()
         if any(m in text_mop_lower for m in mots)
     ]
-    score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
 
-    # Score Global (Moyenne des deux)
+    # --- Détection des 10 Tâches à Haut Risque (traduction de l'image)[cite: 2] ---
+    taches_haut_risque_ref = {
+        "Travaux par point chaud": ["point chaud", "soudure", "meulage", "feu"],
+        "Travaux électriques / sous tension": [
+            "électrique",
+            "electrique",
+            "sous tension",
+            "armoire",
+        ],
+        "Grutage / Levage": ["grutage", "levage", "grue", "charge lourde"],
+        "Espaces confinés": ["espace confiné", "cuve", "silo", "regard"],
+        "Travaux en hauteur": ["hauteur", "échafaudage", "nacelle", "toiture"],
+        "Démolition": ["démolition", "demolition", "casse"],
+        "Terrassement / Ouverture de sols": [
+            "terrassement",
+            "excavation",
+            "tranchée",
+            "sol",
+        ],
+        "Zone ATEX": ["atex", "explosive", "atmosphères"],
+        "Travail isolé": ["isolé", "isole", "seul"],
+        "Accès toiture": ["toiture", "toit", "terrasse"],
+    }
+
+    taches_detectees = [
+        nom
+        for nom, mots in taches_haut_risque_ref.items()
+        if any(m in text_mop_lower for m in mots)
+    ]
+
+    score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
     score_global = int((score_admin + score_technique) / 2)
 
 
@@ -308,6 +339,32 @@ if uploaded_file is not None and text_manual != "":
         else:
           st.markdown("- Tous les critères techniques sont validés !")
 
+      # --- ENCART DÉDIÉ AUX TÂCHES À HAUT RISQUE ---
+      st.markdown("<br>", unsafe_allow_html=True)
+      st.markdown(
+          "#### 🚨 Détection des Tâches à Haut Risque (Standards P&G)"
+      )
+      if taches_detectees:
+        st.warning(
+            f"Attention : **{len(taches_detectees)} tâche(s) à haut risque"
+            " identifiée(s)** dans ce mode opératoire. Des permis"
+            " spécifiques / consignes renforcées sont obligatoires[cite: 2]."
+        )
+        for tache in taches_detectees:
+          st.markdown(
+              f"""
+                    <div class="card-hr">
+                        <b>⚠️ Tâche à haut risque détectée :</b> {tache}
+                    </div>
+                    """,
+              unsafe_allow_html=True,
+          )
+      else:
+        st.info(
+            "✅ Aucune tâche à haut risque majeure détectée automatiquement par"
+            " mots-clés dans ce document."
+        )
+
     # --- SECTION IA LOCALE (OLLAMA) ---
     st.markdown(
         "<br><hr style='border: 2px solid #0B2341;'><br>",
@@ -334,6 +391,7 @@ if uploaded_file is not None and text_manual != "":
           response = requests.post(
               'http://localhost:11434/api/generate',
               json={'model': 'mistral', 'prompt': prompt, 'stream': False},
+              timeout=15,
           )
 
           if response.status_code == 200:
@@ -343,14 +401,18 @@ if uploaded_file is not None and text_manual != "":
             st.write(response.json()['response'])
           else:
             st.error(
-                "Erreur de connexion avec le modèle local. Ollama est-il lancé"
-                " sur votre poste ?"
+                "Erreur de communication avec le serveur Ollama (Code statut :"
+                f" {response.status_code})."
             )
-        except Exception as e:
+        except requests.exceptions.ConnectionError:
           st.error(
-              "Impossible de joindre le serveur Ollama (Vérifiez qu'il tourne"
-              f" sur http://localhost:11434). Erreur : {e}"
+              "❌ Impossible de joindre le serveur Ollama. **Rappel :** L'IA"
+              " locale nécessite qu'Ollama soit actif sur votre machine"
+              " (`localhost:11434`). Si l'application est hébergée sur Streamlit"
+              " Cloud, elle ne peut pas accéder à votre poste local."
           )
+        except Exception as e:
+          st.error(f"Une erreur est survenue lors de la requête : {e}")
 
     # --- PLAN D'ACTION ---
     st.markdown(
@@ -402,3 +464,4 @@ elif uploaded_file is None:
       " arrière-plan. Veuillez simplement importer **le MOP de l'entreprise**"
       " pour lancer l'analyse dynamique."
   )
+    

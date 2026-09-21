@@ -51,7 +51,7 @@ st.markdown(
 header_col1, header_col2 = st.columns([1, 6], gap="medium")
 
 with header_col1:
-  logo_path = "Procter_&_Gamble_logo2.svg"
+  logo_path = "P&G_Logo.svg.webp"
   if os.path.exists(logo_path):
     st.image(logo_path, width=110)
   else:
@@ -94,7 +94,6 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None and text_manual != "":
-  # Message demandée explicitement lors de l'analyse
   with st.spinner("Analyse du mode opératoire en cours..."):
     # Lecture du MOP soumis
     reader_mop = pypdf.PdfReader(uploaded_file)

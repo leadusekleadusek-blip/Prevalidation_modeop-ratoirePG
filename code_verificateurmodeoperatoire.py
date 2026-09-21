@@ -350,7 +350,7 @@ if uploaded_file is not None and text_manual != "":
       if taches_detectees:
         st.warning(
             f"Attention : **{len(taches_detectees)} tâche(s) à haut risque"
-            f" identifiée(s)** dans ce mode opératoire[cite: 2]."
+            f" identifiée(s)** dans ce mode opératoire."
         )
         for tache in taches_detectees:
           st.markdown(
@@ -408,7 +408,7 @@ if uploaded_file is not None and text_manual != "":
             for s in suggestions_contexte:
                 st.markdown(f"- {s}")
         if len(taches_detectees) > 0:
-            st.markdown(f"- **Permis requis :** Assurez-vous que les permis associés aux tâches identifiées ({', '.join(taches_detectees)}) sont formalisés[cite: 2].")
+            st.markdown(f"- **Permis requis :** Assurez-vous que les permis associés aux tâches identifiées ({', '.join(taches_detectees)}) sont formalisés.")
         st.markdown("- **Délai de soumission :** Transmettre la version corrigée au moins 48h avant le début des travaux sur le site P&G Amiens.")
     else:
       st.success(
@@ -416,7 +416,7 @@ if uploaded_file is not None and text_manual != "":
           " aligné avec les exigences du Construction Safety Manual."
       )
 
-    # --- FONCTION DE NETTOYAGE POUR PDF (COMPATIBILITÉ ACCENTS) ---
+    # --- FONCTION DE NETTOYAGE POUR PDF ---
     def clean_pdf_text(text):
       return (
           text.replace("é", "e")
@@ -438,88 +438,157 @@ if uploaded_file is not None and text_manual != "":
           .replace("ℹ️", "[INFO] ")
       )
 
-    # --- GÉNÉRATION DU RAPPORT PDF ---
+    # --- GÉNÉRATION DU RAPPORT PDF PROFESSIONNEL COMPLET ---
     class PDFReport(FPDF):
       def header(self):
-        self.set_font("helvetica", "B", 14)
-        self.set_text_color(11, 35, 65)
-        self.cell(0, 10, clean_pdf_text("P&G AMIENS - RAPPORT D'AUDIT DE PRE-VALIDATION MOP"), 0, 1, "C")
+        # En-tête professionnel avec rappel P&G
+        if os.path.exists("P&G_Logo.svg.webp"):
+            try:
+                self.image("P&G_Logo.svg.webp", x=10, y=8, w=22)
+            except Exception:
+                pass
+        self.set_font("helvetica", "B", 12)
+        self.set_text_color(11, 35, 65) # Bleu P&G (#0B2341)
+        self.cell(0, 8, clean_pdf_text("P&G AMIENS - SITE DE PRODUCTION"), 0, 1, "R")
+        self.set_font("helvetica", "I", 9)
+        self.set_text_color(29, 78, 216) # Bleu accent (#1D4ED8)
+        self.cell(0, 5, clean_pdf_text("Rapport d'Audit et de Pre-validation des Modes Operatoires"), 0, 1, "R")
+        self.ln(5)
+        # Ligne de séparation
+        self.set_draw_color(11, 35, 65)
+        self.set_line_width(0.8)
+        self.line(10, self.get_y(), 200, self.get_y())
         self.ln(5)
 
       def footer(self):
         self.set_y(-15)
         self.set_font("helvetica", "I", 8)
         self.set_text_color(128, 128, 128)
-        self.cell(0, 10, clean_pdf_text(f"Page {self.page_no()}"), 0, 0, "C")
+        self.cell(0, 10, clean_pdf_text(f"Page {self.page_no()} | Validation requise 48h avant intervention"), 0, 0, "C")
 
     def create_pdf():
       pdf = PDFReport()
       pdf.add_page()
       pdf.set_font("helvetica", "", 10)
+
+      # 1. ENCART STATUT & SCORES GLOBAUX
+      pdf.set_fill_color(248, 249, 250)
+      pdf.rect(10, pdf.get_y(), 190, 22, style="F")
+      
+      pdf.set_font("helvetica", "B", 11)
+      if est_conforme:
+          pdf.set_text_color(16, 185, 129) # Vert (#10B981)
+          statut_txt = "STATUT : MODE OPERATOIRE CONFORME"
+      else:
+          pdf.set_text_color(239, 68, 68) # Rouge (#EF4444)
+          statut_txt = "STATUT : MODE OPERATOIRE NON CONFORME"
+      
+      pdf.cell(190, 8, clean_pdf_text(statut_txt), 0, 1, "C")
+      
+      pdf.set_font("helvetica", "", 10)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 6, clean_pdf_text(f"Score Global : {score_global}%  |  Administratif : {score_admin}%  |  Technique : {score_technique}%"), 0, 1, "C")
+      pdf.ln(8)
+
+      # 2. PHASE 1 : VERIFICATION ADMINISTRATIVE
+      pdf.set_font("helvetica", "B", 11)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 7, clean_pdf_text("1. VERIFICATION ADMINISTRATIVE & FORMELLE"), 0, 1, "L")
+      pdf.set_font("helvetica", "", 10)
       pdf.set_text_color(0, 0, 0)
-
-      # Statut Global
-      statut_str = "MODE OPERATOIRE CONFORME" if est_conforme else "MODE OPERATOIRE NON CONFORME"
-      pdf.set_font("helvetica", "B", 12)
-      pdf.cell(190, 8, clean_pdf_text(f"STATUT : {statut_str}"), 0, 1)
+      
+      pdf.cell(190, 6, clean_pdf_text("Elements valides :"), 0, 1)
+      if admin_valides:
+          for item in admin_valides:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"   [OK] {item}"))
+      else:
+          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun element valide."))
+          
       pdf.ln(2)
-
-      # Scores
-      pdf.set_font("helvetica", "", 10)
-      pdf.cell(190, 6, clean_pdf_text(f"- Score Global de Conformite : {score_global}%"), 0, 1)
-      pdf.cell(190, 6, clean_pdf_text(f"- Score Administratif & Formel : {score_admin}%"), 0, 1)
-      pdf.cell(190, 6, clean_pdf_text(f"- Score Technique & Mise en forme : {score_technique}%"), 0, 1)
-      pdf.ln(5)
-
-      # Points Manquants
-      pdf.set_font("helvetica", "B", 11)
-      pdf.cell(190, 8, clean_pdf_text("1. ELEMENTS MANQUANTS / POINTS A CORRIGER"), 0, 1)
-      pdf.set_font("helvetica", "", 10)
-      if tous_les_manquants:
-        for item in tous_les_manquants:
-          pdf.multi_cell(190, 6, clean_pdf_text(f"  - {item}"))
+      pdf.cell(190, 6, clean_pdf_text("Elements manquants (Points rouges a rectifier) :"), 0, 1)
+      if admin_manquants:
+          for item in admin_manquants:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"   [X] {item}"))
       else:
-        pdf.multi_cell(190, 6, clean_pdf_text("  Aucun manquement formel detecte."))
-      pdf.ln(5)
+          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun manquement administratif."))
+      pdf.ln(6)
 
-      # Tâches à haut risque
+      # 3. PHASE 2 : CONTENU TECHNIQUE & STRUCTURATION
       pdf.set_font("helvetica", "B", 11)
-      pdf.cell(190, 8, clean_pdf_text("2. TACHES A HAUT RISQUE DETECTEES"), 0, 1)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 7, clean_pdf_text("2. CONTENU TECHNIQUE & STRUCTURATION DU MOP"), 0, 1, "L")
       pdf.set_font("helvetica", "", 10)
+      pdf.set_text_color(0, 0, 0)
+      
+      pdf.cell(190, 6, clean_pdf_text("Criteres techniques valides :"), 0, 1)
+      if tech_valides:
+          for item in tech_valides:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"   [OK] {item}"))
+      else:
+          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun critere valide."))
+          
+      pdf.ln(2)
+      pdf.cell(190, 6, clean_pdf_text("Criteres techniques manquants :"), 0, 1)
+      if tech_manquants:
+          for item in tech_manquants:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"   [X] {item}"))
+      else:
+          pdf.multi_cell(190, 5, clean_pdf_text("   Aucun manquement technique."))
+      pdf.ln(6)
+
+      # 4. TACHES A HAUT RISQUE DETECTEES
+      pdf.set_font("helvetica", "B", 11)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 7, clean_pdf_text("3. TACHES A HAUT RISQUE DETECTEES (STANDARDS P&G)"), 0, 1, "L")
+      pdf.set_font("helvetica", "", 10)
+      pdf.set_text_color(0, 0, 0)
+      
       if taches_detectees:
-        for tache in taches_detectees:
-          pdf.multi_cell(190, 6, clean_pdf_text(f"  - {tache}"))
+          pdf.multi_cell(190, 5, clean_pdf_text(f"Attention : {len(taches_detectees)} activite(s) a haut risque identifiee(s) necessitant des permis dedies :"))
+          for tache in taches_detectees:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"   [!] Activite sensible : {tache}"))
       else:
-        pdf.multi_cell(190, 6, clean_pdf_text("  Aucune tache a haut risque majeure detectee."))
-      pdf.ln(5)
+          pdf.multi_cell(190, 5, clean_pdf_text("   Aucune activite a haut risque majeure detectee par mots-cles."))
+      pdf.ln(6)
 
-      # Suggestions contextuelles
+      # 5. SUGGESTIONS DE SECURITE CONTEXTUELLES & OUTILS
       pdf.set_font("helvetica", "B", 11)
-      pdf.cell(190, 8, clean_pdf_text("3. SUGGESTIONS DE SECURITE & RECOMMANDATIONS"), 0, 1)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 7, clean_pdf_text("4. SUGGESTIONS DE SECURITE CONTEXTUELLES (OUTILS & EPI)"), 0, 1, "L")
       pdf.set_font("helvetica", "", 10)
+      pdf.set_text_color(0, 0, 0)
+      
       if suggestions_contexte:
-        for sug in suggestions_contexte:
-          pdf.multi_cell(190, 6, clean_pdf_text(f"  - {sug}"))
+          for sug in suggestions_contexte:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"   - {sug}"))
       else:
-        pdf.multi_cell(190, 6, clean_pdf_text("  Aucune remarque particuliere."))
-      pdf.ln(5)
+          pdf.multi_cell(190, 5, clean_pdf_text("   Aucune remarque particuliere sur les outils ou equipements."))
+      pdf.ln(6)
 
-      pdf.set_font("helvetica", "I", 9)
-      pdf.multi_cell(190, 6, clean_pdf_text("Rappel : Tout mode operatoire doit etre valide au moins 48h avant le debut des interventions sur le site P&G Amiens."))
+      # 6. PLAN D'ACTION / RECOMMANDATIONS FINALES
+      pdf.set_font("helvetica", "B", 11)
+      pdf.set_text_color(11, 35, 65)
+      pdf.cell(190, 7, clean_pdf_text("5. PLAN D'ACTION & RECOMMANDATIONS FINALES"), 0, 1, "L")
+      pdf.set_font("helvetica", "", 10)
+      pdf.set_text_color(0, 0, 0)
+      
+      pdf.multi_cell(190, 5, clean_pdf_text(" - Integrer l'ensemble des points en rouge listes ci-dessus dans la version revisee du MOP."))
+      pdf.multi_cell(190, 5, clean_pdf_text(" - Valider la presence des permis de travail et signatures du superviseur N2."))
+      pdf.multi_cell(190, 5, clean_pdf_text(" - Transmettre le dossier corrige au moins 48h avant le debut des travaux sur le site P&G Amiens."))
 
       return bytes(pdf.output())
 
     # --- A LA FIN : BOUTON DE TÉLÉCHARGEMENT DU RAPPORT PDF ---
     st.markdown("<br><hr style='border: 1px solid #0B2341;'><br>", unsafe_allow_html=True)
-    st.markdown("### 📥 Télécharger le Rapport d'Audit Officiel")
-    st.markdown("Cliquez sur le bouton ci-dessous pour générer et télécharger la synthèse complète de l'audit au format **PDF** :")
+    st.markdown("### 📥 Télécharger le Rapport d'Audit Officiel Complet")
+    st.markdown("Cliquez sur le bouton ci-dessous pour générer et télécharger le dossier d'analyse complet reprenant l'intégralité des critères au format **PDF** professionnel :")
 
     pdf_bytes = create_pdf()
 
     st.download_button(
-        label="📄 Générer et télécharger le rapport PDF",
+        label="📄 Générer et télécharger le rapport PDF complet",
         data=pdf_bytes,
-        file_name="Rapport_Audit_MOP_PG_Amiens.pdf",
+        file_name="Rapport_Complet_Audit_MOP_PG_Amiens.pdf",
         mime="application/pdf",
         type="primary",
     )

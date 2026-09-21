@@ -607,13 +607,12 @@ if uploaded_file is not None and text_manual != "":
           if val_list:
               for item in val_list:
                   pdf.set_x(15)
-                  # Sans [OK]
-                  pdf.cell(182, 4, clean_pdf_text(f"  - {item}"), 0, 1)
+                  pdf.multi_cell(180, 4, clean_pdf_text(f"- {item}"))
           else:
               pdf.set_x(15)
-              pdf.cell(182, 4, clean_pdf_text("  - Aucun element valide."), 0, 1)
+              pdf.multi_cell(180, 4, clean_pdf_text("- Aucun element valide."))
               
-          pdf.set_x(13)
+          pdf.set_xy(13, pdf.get_y() + 1)
           pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(239, 68, 68)
           pdf.cell(184, 4, clean_pdf_text("Elements manquants :"), 0, 1)
@@ -625,10 +624,10 @@ if uploaded_file is not None and text_manual != "":
                   pdf.set_text_color(239, 68, 68)
                   pdf.cell(4, 4, clean_pdf_text("X"), 0, 0)
                   pdf.set_text_color(0, 0, 0)
-                  pdf.cell(178, 4, clean_pdf_text(f"  {item}"), 0, 1)
+                  pdf.multi_cell(176, 4, clean_pdf_text(f" {item}"))
           else:
               pdf.set_x(15)
-              pdf.cell(182, 4, clean_pdf_text("  - Tous les points requis sont presents !"), 0, 1)
+              pdf.multi_cell(180, 4, clean_pdf_text("- Tous les points requis sont presents !"))
               
           pdf.set_y(start_y + box_height + 3)
 
@@ -658,12 +657,12 @@ if uploaded_file is not None and text_manual != "":
               pdf.set_font("helvetica", "", 8)
               for tache in taches_detectees:
                   pdf.set_x(15)
-                  pdf.cell(182, 4, clean_pdf_text(f"  - [!] Activite sensible : {tache}"), 0, 1)
+                  pdf.multi_cell(180, 4, clean_pdf_text(f"- [!] Activite sensible : {tache}"))
           
           for sug in suggestions_contexte:
               pdf.set_x(13)
               pdf.set_font("helvetica", "", 8)
-              pdf.cell(184, 4, clean_pdf_text(f"  - {sug}"), 0, 1)
+              pdf.multi_cell(180, 4, clean_pdf_text(f"- {sug}"))
               
           pdf.set_y(start_y + box_h + 3)
 
@@ -677,7 +676,7 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_fill_color(255, 247, 237) # Fond orange très clair (#FFF7ED)
       pdf.set_draw_color(245, 158, 11)  # Bordure orange (#F59E0B)
       
-      action_box_h = 40 # Hauteur fixe sécurisée pour tenir sur une seule page A4 portrait
+      action_box_h = 42 # Hauteur fixe sécurisée pour tenir sur une seule page A4 portrait
       
       pdf.rect(10, start_y, 190, action_box_h, 'DF')
       pdf.set_xy(13, start_y + 2)
@@ -693,7 +692,7 @@ if uploaded_file is not None and text_manual != "":
               pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Integrer explicitement dans le MOP."))
       else:
           pdf.set_x(15)
-          pdf.cell(182, 4, clean_pdf_text("- Aucun manquement formel detecte."), 0, 1)
+          pdf.multi_cell(180, 4, clean_pdf_text("- Aucun manquement formel detecte."))
 
       pdf.set_xy(13, pdf.get_y() + 1)
       pdf.set_font("helvetica", "B", 8)

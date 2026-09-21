@@ -146,7 +146,7 @@ if uploaded_file is not None and text_manual != "":
         intervention_title = intervention_title[:62] + "..."
 
     pdp_match = re.search(r'pdp[:\s\-]*([a-zA-Z0-9\-_]+)', text_mop_lower)
-    pdp_ref = pdp_match.group(1).upper() if pdp_match else "Non specifie (A verifier)"
+    pdp_ref = pdp_match.group(1).upper() if pdp_match else "Non spécifié (À vérifier)"
 
     # --- 1. CONTRÔLE DES POINTS ADMINISTRATIFS OBLIGATOIRES ---
     admin_criteres = {
@@ -448,7 +448,7 @@ if uploaded_file is not None and text_manual != "":
           .replace("ℹ️", "[INFO] ")
       )
 
-    # --- GÉNÉRATION DU RAPPORT PDF FIDÈLE À L'APPLICATION ---
+    # --- GÉNÉRATION DU RAPPORT PDF STYLE CAPTURE D'ÉCRAN / PRO ---
     class PDFReport(FPDF):
       def footer(self):
         self.set_y(-15)
@@ -483,7 +483,7 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_y(38)
       
       # 2. SOUS-TITRE : TITRE INTERVENTION & PDP (En dehors du bandeau)
-      pdf.set_font("helvetica", "B", 10)
+      pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(11, 35, 65)
       pdf.cell(190, 6, clean_pdf_text(f"Titre Intervention : {intervention_title}"), 0, 1)
       pdf.set_font("helvetica", "", 9)
@@ -492,7 +492,7 @@ if uploaded_file is not None and text_manual != "":
       pdf.ln(4)
 
       # 3. BANNIÈRE DE CONFORMITÉ & SYNTHÈSE
-      pdf.set_font("helvetica", "B", 11)
+      pdf.set_font("helvetica", "B", 10)
       if est_conforme:
           pdf.set_fill_color(209, 250, 229) # Vert clair
           pdf.set_text_color(6, 95, 70)     # Vert foncé
@@ -504,7 +504,7 @@ if uploaded_file is not None and text_manual != "":
       
       pdf.rect(10, pdf.get_y(), 190, 10, style="F")
       pdf.cell(190, 10, clean_pdf_text(statut_msg), 0, 1, "C")
-      pdf.ln(5)
+      pdf.ln(4)
 
       # Indicateur Global & Scores
       pdf.set_font("helvetica", "B", 10)
@@ -516,60 +516,89 @@ if uploaded_file is not None and text_manual != "":
       pdf.cell(190, 5, clean_pdf_text(f"- Score Technique & Mise en forme : {score_technique}%"), 0, 1)
       pdf.ln(6)
 
-      # 4. TABLEAU : ANALYSE DETAILLEE PAR PHASE
+      # 4. ANALYSE DETAILLEE PAR PHASE (FORMAT LISTE PAR PHASE)
       pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(11, 35, 65)
       pdf.cell(190, 7, clean_pdf_text("Analyse DETAILLEE par Phase"), 0, 1, "L")
       
-      # En-têtes du tableau
-      pdf.set_font("helvetica", "B", 9)
-      pdf.set_fill_color(11, 35, 65)
-      pdf.set_text_color(255, 255, 255)
-      pdf.cell(45, 7, clean_pdf_text("Phase / Domaine"), 1, 0, "C", True)
-      pdf.cell(72, 7, clean_pdf_text("Elements Valides ([OK])"), 1, 0, "C", True)
-      pdf.cell(73, 7, clean_pdf_text("Elements Manquants ([X])"), 1, 1, "C", True)
-
-      # Lignes du tableau
-      pdf.set_font("helvetica", "", 8.5)
-      pdf.set_text_color(0, 0, 0)
+      # Bloc Phase 1
+      pdf.set_font("helvetica", "B", 9.5)
+      pdf.set_text_color(29, 78, 216)
+      pdf.cell(190, 6, clean_pdf_text("Phase 1 : Verification Administrative & Formelle"), 0, 1)
       
-      val_admin_txt = ", ".join(admin_valides) if admin_valides else "Aucun"
-      manq_admin_txt = ", ".join(admin_manquants) if admin_manquants else "Aucun"
-      val_tech_txt = ", ".join(tech_valides) if tech_valides else "Aucun"
-      manq_tech_txt = ", ".join(tech_manquants) if tech_manquants else "Aucun"
-
-      # Ligne 1 : Administrative
-      pdf.cell(45, 12, clean_pdf_text("1. Admin. & Formel"), 1, 0, "C")
-      pdf.cell(72, 12, clean_pdf_text(val_admin_txt[:100]), 1, 0, "L")
-      pdf.cell(73, 12, clean_pdf_text(manq_admin_txt[:100]), 1, 1, "L")
-
-      # Ligne 2 : Technique
-      pdf.cell(45, 12, clean_pdf_text("2. Technique & MOP"), 1, 0, "C")
-      pdf.cell(72, 12, clean_pdf_text(val_tech_txt[:100]), 1, 0, "L")
-      pdf.cell(73, 12, clean_pdf_text(manq_tech_txt[:100]), 1, 1, "L")
-      pdf.ln(6)
-
-      # 5. TACHES A HAUT RISQUE & SUGGESTIONS CONTEXTUELLES
-      pdf.set_font("helvetica", "B", 11)
-      pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 7, clean_pdf_text("Taches a Haut Risque & Suggestions de Securite"), 0, 1, "L")
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_text_color(16, 185, 129)
+      pdf.cell(190, 5, clean_pdf_text("  Elements valides :"), 0, 1)
       pdf.set_font("helvetica", "", 9)
       pdf.set_text_color(0, 0, 0)
-
-      if taches_detectees:
-          pdf.multi_cell(190, 5, clean_pdf_text(f"[!] {len(taches_detectees)} tache(s) a haut risque identifiee(s) : " + ", ".join(taches_detectees)))
+      if admin_valides:
+          for item in admin_valides:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"    - [OK] {item}"))
       else:
-          pdf.multi_cell(190, 5, clean_pdf_text("[OK] Aucune activite a haut risque majeure detectee."))
+          pdf.multi_cell(190, 5, clean_pdf_text("    - Aucun element valide."))
+          
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_text_color(239, 68, 68)
+      pdf.cell(190, 5, clean_pdf_text("  Elements manquants :"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(0, 0, 0)
+      if admin_manquants:
+          for item in admin_manquants:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"    - [X] {item} (Point manquant)"))
+      else:
+          pdf.multi_cell(190, 5, clean_pdf_text("    - Tous les points administratifs requis sont presents !"))
+      pdf.ln(4)
+
+      # Bloc Phase 2
+      pdf.set_font("helvetica", "B", 9.5)
+      pdf.set_text_color(29, 78, 216)
+      pdf.cell(190, 6, clean_pdf_text("Phase 2 : Contenu Technique & Structuration"), 0, 1)
       
-      pdf.ln(3)
-      if suggestions_contexte:
-          for sug in suggestions_contexte:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"- {sug}"))
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_text_color(16, 185, 129)
+      pdf.cell(190, 5, clean_pdf_text("  Elements valides :"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(0, 0, 0)
+      if tech_valides:
+          for item in tech_valides:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"    - [OK] {item}"))
       else:
-          pdf.multi_cell(190, 5, clean_pdf_text("- Aucune remarque particuliere sur les outils ou equipements."))
-      pdf.ln(6)
+          pdf.multi_cell(190, 5, clean_pdf_text("    - Aucun critere technique valide."))
+          
+      pdf.set_font("helvetica", "B", 9)
+      pdf.set_text_color(239, 68, 68)
+      pdf.cell(190, 5, clean_pdf_text("  Elements manquants :"), 0, 1)
+      pdf.set_font("helvetica", "", 9)
+      pdf.set_text_color(0, 0, 0)
+      if tech_manquants:
+          for item in tech_manquants:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"    - [X] {item} (Structure a revoir)"))
+      else:
+          pdf.multi_cell(190, 5, clean_pdf_text("    - Structure technique validee."))
+      pdf.ln(4)
 
-      # 6. LISTE DETAILLEE DES ELEMENTS A COMPLETER & SUGGESTIONS
+      # Tâches à haut risque & Suggestions
+      if taches_detectees:
+          pdf.set_font("helvetica", "B", 9.5)
+          pdf.set_text_color(153, 27, 27)
+          pdf.cell(190, 6, clean_pdf_text("Taches a Haut Risque Detectees (Standards P&G) :"), 0, 1)
+          pdf.set_font("helvetica", "", 9)
+          pdf.set_text_color(0, 0, 0)
+          for tache in taches_detectees:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"    - [!] Activite sensible : {tache}"))
+          pdf.ln(3)
+
+      if suggestions_contexte:
+          pdf.set_font("helvetica", "B", 9.5)
+          pdf.set_text_color(11, 35, 65)
+          pdf.cell(190, 6, clean_pdf_text("Suggestions de Securite Contextuelles (Outils & EPI) :"), 0, 1)
+          pdf.set_font("helvetica", "", 9)
+          pdf.set_text_color(0, 0, 0)
+          for sug in suggestions_contexte:
+              pdf.multi_cell(190, 5, clean_pdf_text(f"    - {sug}"))
+          pdf.ln(4)
+
+      # 5. LISTE DETAILLEE DES ELEMENTS A COMPLETER & SUGGESTIONS
       pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(11, 35, 65)
       pdf.cell(190, 7, clean_pdf_text("Liste DETAILLEE des Elements a Completer & Suggestions"), 0, 1, "L")
@@ -585,7 +614,7 @@ if uploaded_file is not None and text_manual != "":
       else:
           pdf.multi_cell(190, 5, clean_pdf_text("  - Aucun manquement formel detecte."))
 
-      pdf.ln(3)
+      pdf.ln(2)
       pdf.set_font("helvetica", "B", 9)
       pdf.set_text_color(153, 27, 27)
       pdf.cell(190, 6, clean_pdf_text("Ameliorations de structure technique :"), 0, 1)
@@ -593,11 +622,11 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_text_color(0, 0, 0)
       if tech_manquants:
           for item in tech_manquants:
-              pdf.multi_cell(190, 5, clean_pdf_text(f"  - {item} : Structurer sous forme de tableau detaille."))
+              pdf.multi_cell(190, 5, clean_pdf_text(f"  - {item} : Structurer sous forme de tableau detaille (Phase, Moyens, Risques, Prevention)."))
       else:
           pdf.multi_cell(190, 5, clean_pdf_text("  - Structure technique conforme."))
 
-      pdf.ln(3)
+      pdf.ln(2)
       pdf.set_font("helvetica", "B", 9)
       pdf.set_text_color(11, 35, 65)
       pdf.cell(190, 6, clean_pdf_text("Recommandations & Suggestions Securite sur-mesure :"), 0, 1)
@@ -607,8 +636,8 @@ if uploaded_file is not None and text_manual != "":
           for s in suggestions_contexte:
               pdf.multi_cell(190, 5, clean_pdf_text(f"  - {s}"))
       if taches_detectees:
-          pdf.multi_cell(190, 5, clean_pdf_text(f"  - Permis requis : Assurez-vous que les permis associes aux taches identifiees sont formalises."))
-      pdf.multi_cell(190, 5, clean_pdf_text("  - Delai de soumission : Transmettre la version corigee au moins 48h avant le debut des travaux sur le site P&G Amiens."))
+          pdf.multi_cell(190, 5, clean_pdf_text(f"  - Permis requis : Assurez-vous que les permis associes aux taches identifiees ({', '.join(taches_detectees)}) sont formalises."))
+      pdf.multi_cell(190, 5, clean_pdf_text("  - Delai de soumission : Transmettre la version corrigee au moins 48h avant le debut des travaux sur le site P&G Amiens."))
 
       return bytes(pdf.output())
 

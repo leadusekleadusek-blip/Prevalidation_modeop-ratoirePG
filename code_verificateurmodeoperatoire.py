@@ -464,4 +464,3 @@ elif uploaded_file is None:
       " arrière-plan. Veuillez simplement importer **le MOP de l'entreprise**"
       " pour lancer l'analyse dynamique."
   )
-    

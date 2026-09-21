@@ -1,4 +1,4 @@
 streamlit
 pypdf
 plotly
-openai
+fpdf2

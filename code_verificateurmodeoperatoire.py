@@ -51,7 +51,7 @@ st.markdown(
 )
 
 # --- CHARGEMENT AUTOMATIQUE DU MANUEL P&G DEPUIS LE REPO GITHUB ---
-MANUAL_PATH = "Construction_Safety_Manual.pdf"
+MANUAL_PATH = "python_constructionsafetymanuel.pdf"
 
 text_manual = ""
 if os.path.exists(MANUAL_PATH):
@@ -60,13 +60,11 @@ if os.path.exists(MANUAL_PATH):
     for page in reader_manual.pages:
       text_manual += page.extract_text() or ""
   except Exception as e:
-    st.warning(
-        "⚠️ Impossible de lire le fichier 'Construction_Safety_Manual.pdf'."
-    )
+    st.warning(f"⚠️ Impossible de lire le fichier '{MANUAL_PATH}'.")
 else:
   st.error(
-      f"❌ Fichier de référence introuvable : `{MANUAL_PATH}`. Veuillez l'ajouter"
-      " à la racine de votre dépôt GitHub."
+      f"❌ Fichier de référence introuvable : `{MANUAL_PATH}`. Veuillez vérifier"
+      " qu'il est bien à la racine de votre dépôt."
   )
 
 # --- SECTION DE DÉPÔT DU DOCUMENT À AUDITER ---

@@ -70,15 +70,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- EN-TÊTE AVEC LE LOGO P&G ET LE TITRE ---
-header_col1, header_col2 = st.columns([1, 6], gap="medium")
-
+# --- FONCTION ROBUSTE DE RECHERCHE DE LOGO ---
 def find_logo(base_name):
-    for ext in [".jpg", ".png", ".webp", ".jpeg"]:
+    if os.path.exists(base_name):
+        return base_name
+    for ext in [".svg.webp", ".webp", ".jpg", ".png", ".jpeg"]:
         path = base_name + ext
         if os.path.exists(path):
             return path
     return None
+
+# --- EN-TÊTE AVEC LE LOGO P&G ET LE TITRE ---
+header_col1, header_col2 = st.columns([1, 6], gap="medium")
 
 with header_col1:
   logo_path = find_logo("Procter_&_Gamble_logo") or find_logo("P&G_Logo")
@@ -170,6 +173,7 @@ if uploaded_file is not None and text_manual != "":
     tech_valides = [k for k, mots in tech_criteres.items() if any(m in text_mop_lower for m in mots)]
     tech_manquants = [k for k in tech_criteres.keys() if k not in tech_valides]
     score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
+    score_tech = score_technique  # Alias sécurisé
 
     # --- 3. DÉTECTION DES 10 TÂCHES À HAUT RISQUE (Standards P&G) ---
     taches_haut_risque_ref = {
@@ -221,15 +225,15 @@ if uploaded_file is not None and text_manual != "":
 
     st.markdown("---")
 
-    # --- BANNIÈRE DE CONFORMITÉ EXPLICITE ---
+    # --- BANNIÈRE DE CONFORMITÉ EXPLICITE SANS FOURCHETTE ---
     tous_les_manquants = admin_manquants + tech_manquants
     
     if score_global < 65:
-        st.markdown('<div class="banner-non-conforme">❌ Mode opératoire non conforme aux attentes P&G (<65%)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="banner-non-conforme">❌ Mode opératoire non conforme aux attentes P&G</div>', unsafe_allow_html=True)
     elif score_global < 85:
-        st.markdown('<div class="banner-non-conforme" style="background-color: #FEF3C7; color: #B45309; border-left-color: #F59E0B;">⚠️ Mode opératoire partiellement conforme aux attentes P&G (65%-85%)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="banner-non-conforme" style="background-color: #FEF3C7; color: #B45309; border-left-color: #F59E0B;">⚠️ Mode opératoire partiellement conforme aux attentes P&G</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="banner-conforme">✅ Mode opératoire conforme aux attentes P&G sous réserve de validation d\'un casque rouge (≥85%)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="banner-conforme">✅ Mode opératoire conforme aux attentes P&G sous réserve de validation d\'un casque rouge</div>', unsafe_allow_html=True)
 
     # --- SECTION VISUELLE : JAUGE & SYNTHÈSE ---
     col_gauge, col_info = st.columns([1.1, 1.9], gap="large")

@@ -509,7 +509,6 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_draw_color(2, 21, 48)
       pdf.rounded_rect(38, 10, 162, 20, 3, 'DF')
       
-      # Simulation simple d'un dégradé horizontal sur le rectangle de titre
       r1, g1, b1 = 2, 21, 48
       r2, g2, b2 = 9, 6, 199
       steps = 30
@@ -533,7 +532,7 @@ if uploaded_file is not None and text_manual != "":
 
       pdf.set_y(34)
       
-      # 2. DÉTERMINATION DU NIVEAU DE CONFORMITÉ & LOGO ASSOCIÉ
+      # 2. DÉTERMINATION DU NIVEAU DE CONFORMITÉ & BANDEAU DE STATUT (Longueur 190 mm, centré)
       if score_global < 65:
           niveau = "rouge"
           statut_msg = "NON CONFORME AUX ATTENTES P&G"
@@ -556,52 +555,21 @@ if uploaded_file is not None and text_manual != "":
           border_color = (16, 185, 129)
           text_color = (6, 95, 70)
 
-      # Affichage du logo de statut juste à côté du bandeau de conformité (mêmes dimensions et longueur que le bandeau phase = 190 mm)
       current_y = pdf.get_y()
-      logo_path_status = find_logo(logo_status_name)
-      converted_status_logo = get_fpdf_image(logo_path_status)
-      logo_w = 12
-      logo_h = 12
-      banner_x = 24
-      banner_w = 176
-      banner_h = 12
-      
-      if converted_status_logo and os.path.exists(converted_status_logo):
-          try:
-              pdf.image(converted_status_logo, x=10, y=current_y, w=logo_w, h=logo_h)
-          except Exception:
-              pass
+      banner_x = 10
+      banner_w = 190
+      banner_h = 10
       
       pdf.set_fill_color(*bg_color)
       pdf.set_draw_color(*border_color)
-      pdf.rounded_rect(banner_x, current_y, banner_w, banner_h, 2, 'DF')
+      pdf.rounded_rect(banner_x, current_y, banner_w, banner_h, 3, 'DF')
       
-      if niveau == "vert":
-          prefix = "CONFORME AUX ATTENTES P&G SOUS RÉSERVE DE VALIDATION D'UN CASQUE ROUGE"
-          pdf.set_font("helvetica", "B", 7)
-          width_text = pdf.get_string_width(prefix)
-          casque_logo_path = find_logo("Logo casque rouge")
-          converted_casque_logo = get_fpdf_image(casque_logo_path)
-          img_w = 4 if converted_casque_logo else 0
-          total_w = width_text + (img_w + 2 if img_w else 0)
-          start_x = banner_x + (banner_w - total_w) / 2
+      pdf.set_xy(banner_x, current_y + 3)
+      pdf.set_font("helvetica", "B", 8.5)
+      pdf.set_text_color(*text_color)
+      pdf.cell(banner_w, 4, clean_pdf_text(statut_msg), 0, 0, 'C')
           
-          pdf.set_xy(start_x, current_y + 4)
-          pdf.set_text_color(*text_color)
-          pdf.write(4, clean_pdf_text(prefix))
-          
-          if converted_casque_logo and os.path.exists(converted_casque_logo):
-              try:
-                  pdf.image(converted_casque_logo, x=pdf.get_x() + 1, y=current_y + 3.5, h=3.5)
-              except Exception:
-                  pass
-      else:
-          pdf.set_xy(banner_x, current_y + 3)
-          pdf.set_font("helvetica", "B", 8)
-          pdf.set_text_color(*text_color)
-          pdf.multi_cell(banner_w, 4, clean_pdf_text(statut_msg), 0, 'C')
-          
-      pdf.set_y(current_y + max(logo_h, banner_h) + 4)
+      pdf.set_y(current_y + banner_h + 4)
 
       # 3. CARTE TABLEAU DE BORD (coins arrondis)
       card_y = pdf.get_y()
@@ -674,9 +642,9 @@ if uploaded_file is not None and text_manual != "":
 
       pdf.set_y(card_y + 28)
 
-      # 4. BANDEAU BLEU : "ANALYSE DÉTAILLÉE PAR PHASE" (coins arrondis)
-      pdf.set_fill_color(11, 35, 65)
-      pdf.set_draw_color(11, 35, 65)
+      # 4. BANDEAU BLEU (#02014a) : "ANALYSE DÉTAILLÉE PAR PHASE" (coins arrondis)
+      pdf.set_fill_color(2, 1, 74)
+      pdf.set_draw_color(2, 1, 74)
       pdf.rounded_rect(10, pdf.get_y(), 190, 7, 2, 'DF')
       pdf.set_xy(12, pdf.get_y() + 1)
       pdf.set_font("helvetica", "B", 9.5)

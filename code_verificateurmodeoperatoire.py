@@ -7,7 +7,7 @@ from fpdf import FPDF
 
 # Configuration de la page
 st.set_page_config(
-    page_title="P&G Amiens - Pré-validation MOP", page_icon="✅", layout="wide"
+    page_title="P&G Amiens - Pré-validation Mode opératoire", page_icon="✅", layout="wide"
 )
 
 # --- STYLE CSS PERSONNALISÉ "P&G BRANDING" ---

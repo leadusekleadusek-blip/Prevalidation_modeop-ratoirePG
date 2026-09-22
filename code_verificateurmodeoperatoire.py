@@ -469,8 +469,14 @@ if uploaded_file is not None and text_manual != "":
                 return path
         return path
 
-    # --- GÉNÉRATION DU RAPPORT PDF HAUT DE GAMME ---
+    # --- CLASSE RAPPORT PDF AVEC WRAPPER SÉCURISÉ POUR LES RECTANGLES ARRONDIS ---
     class PDFReport(FPDF):
+      def rounded_rect(self, x, y, w, h, r, style='D'):
+          try:
+              super().rounded_rect(x, y, w, h, r, style)
+          except Exception:
+              self.rect(x, y, w, h, style)
+
       def footer(self):
         self.set_y(-12)
         self.set_font("helvetica", "I", 8)

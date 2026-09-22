@@ -176,6 +176,9 @@ if uploaded_file is not None and text_manual != "":
     score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
     score_tech = score_technique  # Alias sécurisé
 
+    # Définition de la variable globale des manquants
+    tous_les_manquants = admin_manquants + tech_manquants
+
     # --- 3. DÉTECTION DES 10 TÂCHES À HAUT RISQUE (Standards P&G) ---
     taches_haut_risque_ref = {
         "Travail en hauteur": ["hauteur", "échafaudage", "nacelle", "toiture", "pirl", "echelle"],

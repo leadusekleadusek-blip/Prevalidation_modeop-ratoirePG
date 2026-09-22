@@ -176,7 +176,6 @@ if uploaded_file is not None and text_manual != "":
     score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
     score_tech = score_technique  # Alias sécurisé
 
-    # Définition de la variable globale des manquants
     tous_les_manquants = admin_manquants + tech_manquants
 
     # --- 3. DÉTECTION DES 10 TÂCHES À HAUT RISQUE (Standards P&G) ---
@@ -469,13 +468,28 @@ if uploaded_file is not None and text_manual != "":
                 return path
         return path
 
-    # --- CLASSE RAPPORT PDF AVEC WRAPPER SÉCURISÉ POUR LES RECTANGLES ARRONDIS ---
+    # --- CLASSE RAPPORT PDF AVEC VRAIS RECTANGLES ARRONDIS (BÉZIER) ---
     class PDFReport(FPDF):
       def rounded_rect(self, x, y, w, h, r, style='D'):
-          try:
-              super().rounded_rect(x, y, w, h, r, style)
-          except Exception:
-              self.rect(x, y, w, h, style)
+          if style == 'F':
+              op = 'f'
+          elif style == 'FD' or style == 'DF':
+              op = 'B'
+          else:
+              op = 'S'
+          MyArc = 4/3 * (2**0.5 - 1)
+          xc = x + r
+          yc = y + r
+          self._out(f'{xc*self.k:.2f} {(self.h-yc)*self.k:.2f} m')
+          self._out(f'{(x+w-r)*self.k:.2f} {(self.h-y)*self.k:.2f} l')
+          self._out(f'{(x+w-r + r*MyArc)*self.k:.2f} {(self.h-y)*self.k:.2f} {(x+w)*self.k:.2f} {(self.h-(y+r-r*MyArc))*self.k:.2f} {(x+w)*self.k:.2f} {(self.h-(y+r))*self.k:.2f} c')
+          self._out(f'{(x+w)*self.k:.2f} {(self.h-(y+h-r))*self.k:.2f} l')
+          self._out(f'{(x+w)*self.k:.2f} {(self.h-(y+h-r + r*MyArc))*self.k:.2f} {(x+w-r + r*MyArc)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} {(x+w-r)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} c')
+          self._out(f'{(x+r)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} l')
+          self._out(f'{(x+r - r*MyArc)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} {x*self.k:.2f} {(self.h-(y+h-r + r*MyArc))*self.k:.2f} {x*self.k:.2f} {(self.h-(y+h-r))*self.k:.2f} c')
+          self._out(f'{x*self.k:.2f} {(self.h-(y+r))*self.k:.2f} l')
+          self._out(f'{x*self.k:.2f} {(self.h-(y+r - r*MyArc))*self.k:.2f} {(x+r - r*MyArc)*self.k:.2f} {(self.h-y)*self.k:.2f} {xc*self.k:.2f} {(self.h-yc)*self.k:.2f} c')
+          self._out(op)
 
       def footer(self):
         self.set_y(-12)
@@ -505,7 +519,7 @@ if uploaded_file is not None and text_manual != "":
           except Exception:
               pass
 
-      # Titre avec dégradé simulé (bandes de dégradé de #021530 à #0906c7) et coins arrondis (r=3)
+      # Titre avec dégradé simulé et coins arrondis (r=3)
       pdf.set_draw_color(2, 21, 48)
       pdf.rounded_rect(38, 10, 162, 20, 3, 'DF')
       
@@ -536,21 +550,18 @@ if uploaded_file is not None and text_manual != "":
       if score_global < 65:
           niveau = "rouge"
           statut_msg = "NON CONFORME AUX ATTENTES P&G"
-          logo_status_name = "Logo Non conforme rouge"
           bg_color = (254, 226, 226)
           border_color = (239, 68, 68)
           text_color = (153, 27, 27)
       elif score_global < 85:
           niveau = "orange"
           statut_msg = "PARTIELLEMENT CONFORME AUX ATTENTES P&G"
-          logo_status_name = "Logo partiellement conforme orange"
           bg_color = (254, 243, 199)
           border_color = (245, 158, 11)
           text_color = (180, 83, 9)
       else:
           niveau = "vert"
           statut_msg = "CONFORME AUX ATTENTES P&G SOUS RÉSERVE DE VALIDATION D'UN CASQUE ROUGE"
-          logo_status_name = "Logo conforme vert"
           bg_color = (209, 250, 229)
           border_color = (16, 185, 129)
           text_color = (6, 95, 70)
@@ -577,7 +588,6 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_draw_color(210, 215, 222)
       pdf.rounded_rect(10, card_y, 190, 24, 3, 'DF')
       
-      # Taux de conformité à gauche
       pdf.set_xy(12, card_y + 2)
       pdf.set_font("helvetica", "B", 8)
       pdf.set_text_color(11, 35, 65)
@@ -603,12 +613,10 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_font("helvetica", "B", 9)
       pdf.cell(75, 4, clean_pdf_text(f"Global : {score_global}%"), 0, 1, "C")
 
-      # Ligne verticale de séparation
       pdf.set_draw_color(200, 205, 215)
       pdf.set_line_width(0.5)
       pdf.line(90, card_y + 2, 90, card_y + 22)
 
-      # Scores Administratif & Technique
       pdf.set_xy(95, card_y + 3)
       pdf.set_font("helvetica", "B", 9)
       pdf.set_text_color(11, 35, 65)
@@ -652,28 +660,35 @@ if uploaded_file is not None and text_manual != "":
       pdf.cell(186, 5, clean_pdf_text("ANALYSE DÉTAILLÉE PAR PHASE"), 0, 1, "L")
       pdf.ln(3)
 
+      def count_lines(text, max_chars=90):
+          return max(1, (len(text) // max_chars) + 1)
+
       def draw_phase_card(title, val_list, manq_list):
           pdf.set_font("helvetica", "B", 9)
           pdf.set_text_color(29, 78, 216)
           pdf.cell(190, 5, clean_pdf_text(title), 0, 1)
           
           start_y = pdf.get_y()
-          pdf.set_fill_color(255, 255, 255)
-          pdf.set_draw_color(210, 215, 222)
           
-          lines_count = 1 + len(val_list) + len(manq_list)
-          box_height = max(16, lines_count * 5 + 4)
+          # Calcul précis de la hauteur pour éviter les dépassements de texte
+          val_lines = sum(count_lines(f"- {item}") for item in val_list) if val_list else 1
+          manq_lines = sum(count_lines(f" {item}") for item in manq_list) if manq_list else 1
+          total_lines = 2 + val_lines + manq_lines
+          box_height = max(22, total_lines * 5 + 10)
           
           if pdf.get_y() + box_height > 275:
               pdf.add_page()
               start_y = pdf.get_y()
           
+          pdf.set_fill_color(255, 255, 255)
+          pdf.set_draw_color(210, 215, 222)
           pdf.rounded_rect(10, start_y, 190, box_height, 3, 'DF')
-          pdf.set_xy(13, start_y + 2)
           
+          pdf.set_xy(13, start_y + 2)
           pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(16, 185, 129)
           pdf.cell(184, 4, clean_pdf_text("Éléments validés :"), 0, 1)
+          
           pdf.set_font("helvetica", "", 8)
           pdf.set_text_color(0, 0, 0)
           if val_list:
@@ -688,8 +703,8 @@ if uploaded_file is not None and text_manual != "":
           pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(239, 68, 68)
           pdf.cell(184, 4, clean_pdf_text("Éléments manquants :"), 0, 1)
+          
           pdf.set_font("helvetica", "", 8)
-          pdf.set_text_color(0, 0, 0)
           if manq_list:
               for item in manq_list:
                   pdf.set_x(15)
@@ -717,7 +732,10 @@ if uploaded_file is not None and text_manual != "":
           pdf.set_fill_color(254, 242, 242)
           pdf.set_draw_color(239, 68, 68)
           
-          box_h = max(20, 6 + (len(taches_detectees) + len(suggestions_contexte)) * 6)
+          tache_lines = sum(count_lines(f"- {t}") for t in taches_detectees) if taches_detectees else 0
+          sug_lines = sum(count_lines(f"- {s}") for s in suggestions_contexte) if suggestions_contexte else 0
+          box_h = max(22, 8 + (tache_lines + sug_lines + 1) * 5)
+          
           if pdf.get_y() + box_h > 275:
               pdf.add_page()
               start_y = pdf.get_y()
@@ -742,7 +760,7 @@ if uploaded_file is not None and text_manual != "":
               
           pdf.set_y(start_y + box_h + 3)
 
-      # 6. LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER & SUGGESTIONS (Encadré orange dynamique aux coins arrondis)
+      # 6. LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER & SUGGESTIONS (coins arrondis)
       pdf.set_font("helvetica", "B", 9.5)
       pdf.set_text_color(11, 35, 65)
       pdf.cell(190, 5, clean_pdf_text("Liste détaillée des éléments à compléter & suggestions"), 0, 1)
@@ -752,7 +770,10 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_fill_color(255, 247, 237)
       pdf.set_draw_color(245, 158, 11)
       
-      action_box_h = max(30, 10 + (len(admin_manquants) + len(tech_manquants) + 2) * 6)
+      admin_lines = sum(count_lines(f"- {item} : Intégrer explicitement dans le MOP.") for item in admin_manquants) if admin_manquants else 1
+      tech_lines = sum(count_lines(f"- {item} : Structurer sous forme de tableau.") for item in tech_manquants) if tech_manquants else 1
+      action_box_h = max(30, 12 + (admin_lines + tech_lines + 3) * 5)
+      
       if pdf.get_y() + action_box_h > 275:
           pdf.add_page()
           start_y = pdf.get_y()

@@ -3,11 +3,12 @@ import re
 import pypdf
 import plotly.graph_objects as go
 import streamlit as st
+from PIL import Image
 from fpdf import FPDF
 
 # Configuration de la page
 st.set_page_config(
-    page_title="P&G Amiens - Pré-validation Mode opératoire", page_icon="✅", layout="wide"
+    page_title="P&G Amiens - Pré-validation MOP", page_icon="✅", layout="wide"
 )
 
 # --- STYLE CSS PERSONNALISÉ "P&G BRANDING" ---
@@ -22,7 +23,7 @@ st.markdown(
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
         .pg-header {
-            background: linear-gradient(90deg, #0B2341 0%, #1D4ED8 100%);
+            background: linear-gradient(90deg, #021530 0%, #0906c7 100%);
             padding: 20px 25px;
             border-radius: 12px;
             color: white;
@@ -95,7 +96,7 @@ with header_col2:
       """
         <div class="pg-header" style="margin-bottom: 0px; padding: 15px 25px;">
             <h1 style="color: white; margin: 0; font-size: 1.8rem;">P&G Amiens | Assistant Sécurité Construction</h1>
-            <p style="font-size: 1rem; margin: 0; opacity: 0.9;">Plateforme intelligente de pré-validation des Modes Opératoires et JSA</p>
+            <p style="font-size: 1rem; margin: 0; opacity: 0.9;">Plateforme intelligente de pré-validation des modes opératoires et JSA</p>
         </div>
     """,
       unsafe_allow_html=True,
@@ -103,7 +104,7 @@ with header_col2:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- CHARGEMENT AUTOMATIQUE DU MANUEL P&G DEPUIS LE REPO GITHUB ---
+# --- CHARGEMENT AUTOMATIQUE DU MANUEL P&G DEPUIS LE DÉPÔT ---
 MANUAL_PATH = "python_constructionsafetymanuel.pdf"
 if not os.path.exists(MANUAL_PATH):
   for f in os.listdir("."):
@@ -126,9 +127,9 @@ else:
   )
 
 # --- SECTION DE DÉPÔT DU DOCUMENT À AUDITER ---
-st.markdown("### 📂 Document de l'Entreprise Extérieure à auditer")
+st.markdown("### 📂 Document de l'entreprise extérieure à auditer")
 uploaded_file = st.file_uploader(
-    "Glissez le Mode Opératoire (MOP) ou la JSA au format PDF", type=["pdf"]
+    "Glissez le mode opératoire (MOP) ou la JSA au format PDF", type=["pdf"]
 )
 
 if uploaded_file is not None and text_manual != "":
@@ -198,7 +199,7 @@ if uploaded_file is not None and text_manual != "":
         if not any(w in text_mop_lower for w in ["écran facial", "visière", "lunettes"]):
             suggestions_contexte.append("⚠️ Outil (Meuleuse) : Utilisation de meuleuse détectée sans mention claire d'un écran facial / lunettes de protection et de gants anti-coupure adaptés.")
         if "point chaud" not in taches_detectees:
-            suggestions_contexte.append("⚠️ Outil (Meuleuse) : L'usage d'une meuleuse génère des étincelles ; le rattacher obligatoirement aux exigences des Travaux par point chaud (extincteur à proximité, bâche ignifugée).")
+            suggestions_contexte.append("⚠️ Outil (Meuleuse) : L'usage d'une meuleuse génère des étincelles ; le rattacher obligatoirement aux exigences des travaux par point chaud (extincteur à proximité, bâche ignifugée).")
 
     if "pirl" in text_mop_lower or "plateforme" in text_mop_lower:
         suggestions_contexte.append("ℹ️ Équipement hauteur (PIRL) : Utilisation d'une PIRL détectée. Parfait, pas besoin de prévoir de ligne de vie ou de harnais si la PIRL dispose de garde-corps intégrés conformes, mais vérifier sa stabilisation et son freinage.")
@@ -206,7 +207,7 @@ if uploaded_file is not None and text_manual != "":
         suggestions_contexte.append("⚠️ Travaux en hauteur : Travail en hauteur mentionné sans préciser explicitement le moyen d'accès sécurisé (PIRL, échafaudage, PEMP) ni les mesures antichute.")
 
     if "chimique" in text_mop_lower or "produit" in text_mop_lower:
-        suggestions_contexte.append("ℹ️ Produits chimiques : S'assurer que les Fiches de Données de Sécurité (FDS) associées sont jointes au dossier et que les EPI adaptés (gants spécifiques, lunettes, tablier) sont notifiés.")
+        suggestions_contexte.append("ℹ️ Produits chimiques : S'assurer que les fiches de données de sécurité (FDS) associées sont jointes au dossier et que les EPI adaptés (gants spécifiques, lunettes, tablier) sont notifiés.")
 
     score_global = int((score_admin + score_technique) / 2)
 
@@ -226,8 +227,6 @@ if uploaded_file is not None and text_manual != "":
     st.markdown("---")
 
     # --- BANNIÈRE DE CONFORMITÉ EXPLICITE SANS FOURCHETTE ---
-    tous_les_manquants = admin_manquants + tech_manquants
-    
     if score_global < 65:
         st.markdown('<div class="banner-non-conforme">❌ Mode opératoire non conforme aux attentes P&G</div>', unsafe_allow_html=True)
     elif score_global < 85:
@@ -239,7 +238,7 @@ if uploaded_file is not None and text_manual != "":
     col_gauge, col_info = st.columns([1.1, 1.9], gap="large")
 
     with col_gauge:
-      st.markdown("### 📊 Taux de conformité Global")
+      st.markdown("### 📊 Taux de conformité global")
 
       fig = go.Figure(
           go.Indicator(
@@ -295,8 +294,8 @@ if uploaded_file is not None and text_manual != "":
 
       st.markdown(
           f"""
-            * **Score Administratif & Formel :** <span style="color:{color_admin}; font-weight:bold; font-size:1.1rem;">{score_admin}%</span>
-            * **Score Technique & Mise en forme :** <span style="color:{color_tech}; font-weight:bold; font-size:1.1rem;">{score_tech}%</span>
+            * **Score administratif & formel :** <span style="color:{color_admin}; font-weight:bold; font-size:1.1rem;">{score_admin}%</span>
+            * **Score technique & mise en forme :** <span style="color:{color_tech}; font-weight:bold; font-size:1.1rem;">{score_tech}%</span>
             * ⏱️ *Rappel P&G : Validation requise 48h avant le début des travaux.*
             """,
           unsafe_allow_html=True,
@@ -308,16 +307,16 @@ if uploaded_file is not None and text_manual != "":
     )
 
     # --- ANALYSE DÉTAILLÉE PAR PHASE ---
-    st.markdown("## 🔍 Analyse Détaillée par Phase")
+    st.markdown("## 🔍 Analyse détaillée par phase")
     tab1, tab2 = st.tabs(
         [
-            "📋 Phase 1 : Vérification Administrative",
-            "⚙️ Phase 2 : Contenu Technique & Tâches à Haut Risque",
+            "📋 Phase 1 : Vérification administrative",
+            "⚙️ Phase 2 : Contenu technique & Tâches à haut risque",
         ]
     )
 
     with tab1:
-      st.markdown("#### Conformité Administrative du dossier")
+      st.markdown("#### Conformité administrative du dossier")
       col_a1, col_a2 = st.columns(2)
       with col_a1:
         st.markdown("##### ✅ Éléments validés")
@@ -335,7 +334,7 @@ if uploaded_file is not None and text_manual != "":
           st.markdown("- Tous les points administratifs requis sont présents !")
 
     with tab2:
-      st.markdown("#### Conformité Technique & Structuration")
+      st.markdown("#### Conformité technique & structuration")
       col_t1, col_t2 = st.columns(2)
       with col_t1:
         st.markdown("##### ✅ Éléments validés")
@@ -355,7 +354,7 @@ if uploaded_file is not None and text_manual != "":
       # --- ENCART DÉDIÉ AUX TÂCHES À HAUT RISQUE ---
       st.markdown("<br>", unsafe_allow_html=True)
       st.markdown(
-          "#### 🚨 Détection des Tâches à Haut Risque (Standards P&G)"
+          "#### 🚨 Détection des tâches à haut risque (Standards P&G)"
       )
       if taches_detectees:
         st.warning(
@@ -367,7 +366,7 @@ if uploaded_file is not None and text_manual != "":
               f"""
                     <div class="card-hr">
                         <b>Activité à haut risque détectée :</b> {tache} <br>
-                        <span style="font-size:0.85rem; color:#7F1D1D;">Vérifier l'adéquation des permis de travail et consignes spécifiques (LOTO, Point Chaud, etc.).</span>
+                        <span style="font-size:0.85rem; color:#7F1D1D;">Vérifier l'adéquation des permis de travail et consignes spécifiques (LOTO, point chaud, etc.).</span>
                     </div>
                     """,
               unsafe_allow_html=True,
@@ -380,7 +379,7 @@ if uploaded_file is not None and text_manual != "":
 
       if suggestions_contexte:
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("#### 💡 Suggestions de Sécurité Contextuelles (Outils & EPI)")
+        st.markdown("#### 💡 Suggestions de sécurité contextuelles (Outils & EPI)")
         for sug in suggestions_contexte:
             st.markdown(f"- {sug}")
 
@@ -389,10 +388,10 @@ if uploaded_file is not None and text_manual != "":
         "<br><hr style='border: 2px solid #0B2341;'><br>",
         unsafe_allow_html=True,
     )
-    st.markdown("### 🛠️ Liste Détaillée des Éléments à Compléter & Suggestions")
+    st.markdown("### 🛠️ Liste détaillée des éléments à compléter & suggestions")
     st.markdown(
         "Voici le détail des points à rectifier et les pistes"
-        " d'amélioration sécurité pour rendre le MOP conforme :"
+        " d'amélioration de la sécurité pour rendre le MOP conforme :"
     )
 
     if tous_les_manquants or suggestions_contexte or score_global < 100:
@@ -413,7 +412,7 @@ if uploaded_file is not None and text_manual != "":
             st.markdown("- Structure technique conforme.")
 
       with col_p2:
-        st.markdown("#### 🛡️ Recommandations & Suggestions Sécurité sur-mesure :")
+        st.markdown("#### 🛡️ Recommandations & suggestions sécurité sur-mesure :")
         if suggestions_contexte:
             for s in suggestions_contexte:
                 st.markdown(f"- {s}")
@@ -448,6 +447,25 @@ if uploaded_file is not None and text_manual != "":
           .replace("ℹ️", "")
       )
 
+    # --- CONVERSION DES IMAGES WEBP/SVG POUR FPDF ---
+    def get_fpdf_image(path):
+        if not path or not os.path.exists(path):
+            return None
+        if path.lower().endswith(('.webp', '.svg.webp', '.svg')):
+            try:
+                img = Image.open(path).convert("RGBA")
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                if img.mode == 'RGBA':
+                    background.paste(img, mask=img.split()[3])
+                else:
+                    background.paste(img)
+                tmp_path = path + ".png"
+                background.save(tmp_path, "PNG")
+                return tmp_path
+            except Exception:
+                return path
+        return path
+
     # --- GÉNÉRATION DU RAPPORT PDF HAUT DE GAMME ---
     class PDFReport(FPDF):
       def footer(self):
@@ -460,26 +478,49 @@ if uploaded_file is not None and text_manual != "":
       pdf = PDFReport()
       pdf.add_page()
       
-      # 1. LOGO P&G À GAUCHE + BANDEAU BLEU TITRE ENSUITE
+      # 1. LOGO P&G (proportionnel sans l'étirer) + TITRE AVEC DÉGRADÉ SIMULÉ & COINS ARRONDIS
       pg_logo_file = find_logo("Procter_&_Gamble_logo") or find_logo("P&G_Logo")
-      if pg_logo_file and os.path.exists(pg_logo_file):
+      converted_pg_logo = get_fpdf_image(pg_logo_file)
+      
+      logo_w, logo_h = 24, 20
+      if converted_pg_logo and os.path.exists(converted_pg_logo):
           try:
-              pdf.image(pg_logo_file, x=10, y=10, w=26, h=20)
+              with Image.open(converted_pg_logo) as im:
+                  orig_w, orig_h = im.size
+                  aspect = orig_w / orig_h
+                  logo_w = 20 * aspect
+                  if logo_w > 26:
+                      logo_w = 26
+                      logo_h = 26 / aspect
+              pdf.image(converted_pg_logo, x=10, y=10, w=logo_w, h=logo_h)
           except Exception:
               pass
 
-      pdf.set_fill_color(11, 35, 65) # Bleu P&G (#0B2341)
-      pdf.rect(38, 10, 162, 20, 'F')
+      # Titre avec dégradé simulé (bandes de dégradé de #021530 à #0906c7) et coins arrondis (r=3)
+      pdf.set_draw_color(2, 21, 48)
+      pdf.rounded_rect(38, 10, 162, 20, 3, 'DF')
+      
+      # Simulation simple d'un dégradé horizontal sur le rectangle de titre
+      r1, g1, b1 = 2, 21, 48
+      r2, g2, b2 = 9, 6, 199
+      steps = 30
+      w_step = 162 / steps
+      for i in range(steps):
+          curr_r = int(r1 + (r2 - r1) * (i / steps))
+          curr_g = int(g1 + (g2 - g1) * (i / steps))
+          curr_b = int(b1 + (b2 - b1) * (i / steps))
+          pdf.set_fill_color(curr_r, curr_g, curr_b)
+          pdf.rect(38 + i * w_step, 10, w_step + 0.2, 20, 'F')
 
       pdf.set_xy(42, 13)
-      pdf.set_font("helvetica", "B", 11.5)
+      pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(255, 255, 255)
-      pdf.cell(154, 5, clean_pdf_text("Rapport de l'analyse du mode operatoire"), 0, 1, "L")
+      pdf.cell(154, 5, clean_pdf_text("Rapport de l'analyse du mode opératoire"), 0, 1, "L")
 
       pdf.set_xy(42, 19)
       pdf.set_font("helvetica", "", 8.5)
       pdf.set_text_color(220, 230, 242)
-      pdf.cell(154, 5, clean_pdf_text("P&G Amiens | Assistant Securite Construction"), 0, 1, "L")
+      pdf.cell(154, 5, clean_pdf_text("P&G Amiens | Assistant sécurité construction"), 0, 1, "L")
 
       pdf.set_y(34)
       
@@ -500,69 +541,70 @@ if uploaded_file is not None and text_manual != "":
           text_color = (180, 83, 9)
       else:
           niveau = "vert"
-          statut_msg = "CONFORME AUX ATTENTES P&G SOUS RESERVE DE VALIDATION D'UN CASQUE ROUGE"
+          statut_msg = "CONFORME AUX ATTENTES P&G SOUS RÉSERVE DE VALIDATION D'UN CASQUE ROUGE"
           logo_status_name = "Logo conforme vert"
           bg_color = (209, 250, 229)
           border_color = (16, 185, 129)
           text_color = (6, 95, 70)
 
-      # Affichage du logo de statut juste à côté du bandeau de conformité
+      # Affichage du logo de statut juste à côté du bandeau de conformité (mêmes dimensions et longueur que le bandeau phase = 190 mm)
       current_y = pdf.get_y()
       logo_path_status = find_logo(logo_status_name)
+      converted_status_logo = get_fpdf_image(logo_path_status)
       logo_w = 12
       logo_h = 12
       banner_x = 24
       banner_w = 176
       banner_h = 12
       
-      if logo_path_status and os.path.exists(logo_path_status):
+      if converted_status_logo and os.path.exists(converted_status_logo):
           try:
-              pdf.image(logo_path_status, x=10, y=current_y, w=logo_w, h=logo_h)
+              pdf.image(converted_status_logo, x=10, y=current_y, w=logo_w, h=logo_h)
           except Exception:
               pass
       
       pdf.set_fill_color(*bg_color)
       pdf.set_draw_color(*border_color)
-      pdf.rect(banner_x, current_y, banner_w, banner_h, 'DF')
+      pdf.rounded_rect(banner_x, current_y, banner_w, banner_h, 2, 'DF')
       
       if niveau == "vert":
-          # Intégration de l'icône casque rouge à côté de "casque rouge"
-          prefix = "CONFORME AUX ATTENTES P&G SOUS RESERVE DE VALIDATION D'UN CASQUE ROUGE"
-          pdf.set_font("helvetica", "B", 7.5)
+          prefix = "CONFORME AUX ATTENTES P&G SOUS RÉSERVE DE VALIDATION D'UN CASQUE ROUGE"
+          pdf.set_font("helvetica", "B", 7)
           width_text = pdf.get_string_width(prefix)
           casque_logo_path = find_logo("Logo casque rouge")
-          img_w = 4 if casque_logo_path else 0
+          converted_casque_logo = get_fpdf_image(casque_logo_path)
+          img_w = 4 if converted_casque_logo else 0
           total_w = width_text + (img_w + 2 if img_w else 0)
           start_x = banner_x + (banner_w - total_w) / 2
           
-          pdf.set_xy(start_x, current_y + 3.5)
+          pdf.set_xy(start_x, current_y + 4)
           pdf.set_text_color(*text_color)
           pdf.write(4, clean_pdf_text(prefix))
           
-          if casque_logo_path and os.path.exists(casque_logo_path):
+          if converted_casque_logo and os.path.exists(converted_casque_logo):
               try:
-                  pdf.image(casque_logo_path, x=pdf.get_x() + 1, y=current_y + 3.5, h=3.5)
+                  pdf.image(converted_casque_logo, x=pdf.get_x() + 1, y=current_y + 3.5, h=3.5)
               except Exception:
                   pass
       else:
           pdf.set_xy(banner_x, current_y + 3)
-          pdf.set_font("helvetica", "B", 8.5)
+          pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(*text_color)
           pdf.multi_cell(banner_w, 4, clean_pdf_text(statut_msg), 0, 'C')
           
       pdf.set_y(current_y + max(logo_h, banner_h) + 4)
 
-      # 3. CARTE TABLEAU DE BORD (Taux de conformité à gauche + Scores à droite)
+      # 3. CARTE TABLEAU DE BORD (coins arrondis)
       card_y = pdf.get_y()
       pdf.set_fill_color(248, 249, 250)
       pdf.set_draw_color(210, 215, 222)
-      pdf.rect(10, card_y, 190, 24, 'DF')
+      pdf.rounded_rect(10, card_y, 190, 24, 3, 'DF')
       
       # Taux de conformité à gauche
       pdf.set_xy(12, card_y + 2)
       pdf.set_font("helvetica", "B", 8)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(75, 4, clean_pdf_text("TAUX DE CONFORMITE"), 0, 1, "C")
+      pdf.cell(75, 4, clean_pdf_text("TAUX DE CONFORMITÉ"), 0, 1, "C")
       
       bar_x = 18
       bar_y = card_y + 11
@@ -589,11 +631,11 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_line_width(0.5)
       pdf.line(90, card_y + 2, 90, card_y + 22)
 
-      # Scores Administratif & Technique avec code couleur dynamique
+      # Scores Administratif & Technique
       pdf.set_xy(95, card_y + 3)
       pdf.set_font("helvetica", "B", 9)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(100, 5, clean_pdf_text("Scores par domaine d'evaluation :"), 0, 1, "L")
+      pdf.cell(100, 5, clean_pdf_text("Scores par domaine d'évaluation :"), 0, 1, "L")
       
       pdf.set_x(95)
       pdf.set_font("helvetica", "", 8.5)
@@ -623,13 +665,14 @@ if uploaded_file is not None and text_manual != "":
 
       pdf.set_y(card_y + 28)
 
-      # 4. BANDEAU BLEU : "ANALYSE DÉTAILLÉE PAR PHASE"
+      # 4. BANDEAU BLEU : "ANALYSE DÉTAILLÉE PAR PHASE" (coins arrondis)
       pdf.set_fill_color(11, 35, 65)
-      pdf.rect(10, pdf.get_y(), 190, 7, 'F')
+      pdf.set_draw_color(11, 35, 65)
+      pdf.rounded_rect(10, pdf.get_y(), 190, 7, 2, 'DF')
       pdf.set_xy(12, pdf.get_y() + 1)
       pdf.set_font("helvetica", "B", 9.5)
       pdf.set_text_color(255, 255, 255)
-      pdf.cell(186, 5, clean_pdf_text("ANALYSE DETAILLEE PAR PHASE"), 0, 1, "L")
+      pdf.cell(186, 5, clean_pdf_text("ANALYSE DÉTAILLÉE PAR PHASE"), 0, 1, "L")
       pdf.ln(3)
 
       def draw_phase_card(title, val_list, manq_list):
@@ -648,12 +691,12 @@ if uploaded_file is not None and text_manual != "":
               pdf.add_page()
               start_y = pdf.get_y()
           
-          pdf.rect(10, start_y, 190, box_height, 'DF')
+          pdf.rounded_rect(10, start_y, 190, box_height, 3, 'DF')
           pdf.set_xy(13, start_y + 2)
           
           pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(16, 185, 129)
-          pdf.cell(184, 4, clean_pdf_text("Elements valides :"), 0, 1)
+          pdf.cell(184, 4, clean_pdf_text("Éléments validés :"), 0, 1)
           pdf.set_font("helvetica", "", 8)
           pdf.set_text_color(0, 0, 0)
           if val_list:
@@ -662,12 +705,12 @@ if uploaded_file is not None and text_manual != "":
                   pdf.multi_cell(180, 4, clean_pdf_text(f"- {item}"))
           else:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text("- Aucun element valide."))
+              pdf.multi_cell(180, 4, clean_pdf_text("- Aucun élément validé."))
               
           pdf.set_xy(13, pdf.get_y() + 1)
           pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(239, 68, 68)
-          pdf.cell(184, 4, clean_pdf_text("Elements manquants :"), 0, 1)
+          pdf.cell(184, 4, clean_pdf_text("Éléments manquants :"), 0, 1)
           pdf.set_font("helvetica", "", 8)
           pdf.set_text_color(0, 0, 0)
           if manq_list:
@@ -679,18 +722,18 @@ if uploaded_file is not None and text_manual != "":
                   pdf.multi_cell(176, 4, clean_pdf_text(f" {item}"))
           else:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text("- Tous les points requis sont presents !"))
+              pdf.multi_cell(180, 4, clean_pdf_text("- Tous les points requis sont présents !"))
               
           pdf.set_y(start_y + box_height + 3)
 
-      draw_phase_card("Phase 1 : Verification Administrative & Formelle", admin_valides, admin_manquants)
-      draw_phase_card("Phase 2 : Contenu Technique & Structuration", tech_valides, tech_manquants)
+      draw_phase_card("Phase 1 : Vérification administrative & formelle", admin_valides, admin_manquants)
+      draw_phase_card("Phase 2 : Contenu technique & structuration", tech_valides, tech_manquants)
 
-      # 5. TÂCHES À HAUT RISQUE EN LISTE À PUCES PROPRE & SUGGESTIONS
+      # 5. TÂCHES À HAUT RISQUE & SUGGESTIONS (coins arrondis)
       if taches_detectees or suggestions_contexte:
           pdf.set_font("helvetica", "B", 9.5)
           pdf.set_text_color(11, 35, 65)
-          pdf.cell(190, 5, clean_pdf_text("Taches a Haut Risque & Suggestions de Securite"), 0, 1)
+          pdf.cell(190, 5, clean_pdf_text("Tâches à haut risque & suggestions de sécurité"), 0, 1)
           pdf.ln(1)
           
           start_y = pdf.get_y()
@@ -702,14 +745,14 @@ if uploaded_file is not None and text_manual != "":
               pdf.add_page()
               start_y = pdf.get_y()
 
-          pdf.rect(10, start_y, 190, box_h, 'DF')
+          pdf.rounded_rect(10, start_y, 190, box_h, 3, 'DF')
           pdf.set_xy(13, start_y + 2)
           
           pdf.set_font("helvetica", "B", 8.5)
           pdf.set_text_color(153, 27, 27)
           
           if taches_detectees:
-              pdf.cell(184, 4, clean_pdf_text("Taches a haut risque identifiees :"), 0, 1)
+              pdf.cell(184, 4, clean_pdf_text("Tâches à haut risque identifiées :"), 0, 1)
               pdf.set_font("helvetica", "", 8)
               for tache in taches_detectees:
                   pdf.set_x(15)
@@ -722,55 +765,55 @@ if uploaded_file is not None and text_manual != "":
               
           pdf.set_y(start_y + box_h + 3)
 
-      # 6. LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER & SUGGESTIONS (Encadré Orange dynamique)
+      # 6. LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER & SUGGESTIONS (Encadré orange dynamique aux coins arrondis)
       pdf.set_font("helvetica", "B", 9.5)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 5, clean_pdf_text("Liste DETAILLEE des Elements a Completer & Suggestions"), 0, 1)
+      pdf.cell(190, 5, clean_pdf_text("Liste détaillée des éléments à compléter & suggestions"), 0, 1)
       pdf.ln(1)
       
       start_y = pdf.get_y()
-      pdf.set_fill_color(255, 247, 237) # Fond orange très clair (#FFF7ED)
-      pdf.set_draw_color(245, 158, 11)  # Bordure orange (#F59E0B)
+      pdf.set_fill_color(255, 247, 237)
+      pdf.set_draw_color(245, 158, 11)
       
       action_box_h = max(30, 10 + (len(admin_manquants) + len(tech_manquants) + 2) * 6)
       if pdf.get_y() + action_box_h > 275:
           pdf.add_page()
           start_y = pdf.get_y()
 
-      pdf.rect(10, start_y, 190, action_box_h, 'DF')
+      pdf.rounded_rect(10, start_y, 190, action_box_h, 3, 'DF')
       pdf.set_xy(13, start_y + 2)
       
       pdf.set_font("helvetica", "B", 8)
-      pdf.set_text_color(180, 83, 9) # Orange foncé
-      pdf.cell(184, 4, clean_pdf_text("Points administratifs et formels a rajouter :"), 0, 1)
+      pdf.set_text_color(180, 83, 9)
+      pdf.cell(184, 4, clean_pdf_text("Points administratifs et formels à rajouter :"), 0, 1)
       pdf.set_font("helvetica", "", 8)
       pdf.set_text_color(0, 0, 0)
       if admin_manquants:
           for item in admin_manquants:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Integrer explicitement dans le MOP."))
+              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Intégrer explicitement dans le MOP."))
       else:
           pdf.set_x(15)
-          pdf.multi_cell(180, 4, clean_pdf_text("- Aucun manquement formel detecte."))
+          pdf.multi_cell(180, 4, clean_pdf_text("- Aucun manquement formel détecté."))
 
       pdf.set_xy(13, pdf.get_y() + 1)
       pdf.set_font("helvetica", "B", 8)
       pdf.set_text_color(180, 83, 9)
-      pdf.cell(184, 4, clean_pdf_text("Ameliorations techniques & securite :"), 0, 1)
+      pdf.cell(184, 4, clean_pdf_text("Améliorations techniques & sécurité :"), 0, 1)
       pdf.set_font("helvetica", "", 8)
       pdf.set_text_color(0, 0, 0)
       if tech_manquants:
           for item in tech_manquants:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Structurer sous forme de tableau (Phase, Moyens, Risques, Prevention)."))
+              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Structurer sous forme de tableau (Phase, Moyens, Risques, Prévention)."))
       pdf.set_x(15)
-      pdf.multi_cell(180, 4, clean_pdf_text("- Delai de soumission : Transmettre la version corrigee 48h avant intervention."))
+      pdf.multi_cell(180, 4, clean_pdf_text("- Délai de soumission : Transmettre la version corrigée 48h avant intervention."))
 
       return bytes(pdf.output())
 
-    # --- A LA FIN : BOUTON DE TÉLÉCHARGEMENT DU RAPPORT PDF ---
+    # --- BOUTON DE TÉLÉCHARGEMENT DU RAPPORT PDF ---
     st.markdown("<br><hr style='border: 1px solid #0B2341;'><br>", unsafe_allow_html=True)
-    st.markdown("### 📥 Télécharger le Rapport d'Audit Officiel Complet")
+    st.markdown("### 📥 Télécharger le rapport d'audit officiel complet")
     st.markdown("Cliquez sur le bouton ci-dessous pour générer et télécharger le dossier d'analyse complet sous forme de **rapport PDF haut de gamme** :")
 
     pdf_bytes = create_pdf()

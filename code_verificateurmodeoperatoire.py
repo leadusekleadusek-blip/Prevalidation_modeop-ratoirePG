@@ -174,7 +174,7 @@ if uploaded_file is not None and text_manual != "":
     tech_valides = [k for k, mots in tech_criteres.items() if any(m in text_mop_lower for m in mots)]
     tech_manquants = [k for k in tech_criteres.keys() if k not in tech_valides]
     score_technique = int((len(tech_valides) / len(tech_criteres)) * 100)
-    score_tech = score_technique  # Alias sécurisé
+    score_tech = score_technique
 
     tous_les_manquants = admin_manquants + tech_manquants
 
@@ -468,7 +468,7 @@ if uploaded_file is not None and text_manual != "":
                 return path
         return path
 
-    # --- CLASSE RAPPORT PDF AVEC VRAIS RECTANGLES ARRONDIS (BÉZIER) ---
+    # --- CLASSE RAPPORT PDF AVEC RECTANGLES PARFAITS ET COINS ARRONDIS PROPRES ---
     class PDFReport(FPDF):
       def rounded_rect(self, x, y, w, h, r, style='D'):
           if style == 'F':
@@ -477,18 +477,28 @@ if uploaded_file is not None and text_manual != "":
               op = 'B'
           else:
               op = 'S'
+          k = self.k
+          hp = self.h
           MyArc = 4/3 * (2**0.5 - 1)
-          xc = x + r
-          yc = y + r
-          self._out(f'{xc*self.k:.2f} {(self.h-yc)*self.k:.2f} m')
-          self._out(f'{(x+w-r)*self.k:.2f} {(self.h-y)*self.k:.2f} l')
-          self._out(f'{(x+w-r + r*MyArc)*self.k:.2f} {(self.h-y)*self.k:.2f} {(x+w)*self.k:.2f} {(self.h-(y+r-r*MyArc))*self.k:.2f} {(x+w)*self.k:.2f} {(self.h-(y+r))*self.k:.2f} c')
-          self._out(f'{(x+w)*self.k:.2f} {(self.h-(y+h-r))*self.k:.2f} l')
-          self._out(f'{(x+w)*self.k:.2f} {(self.h-(y+h-r + r*MyArc))*self.k:.2f} {(x+w-r + r*MyArc)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} {(x+w-r)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} c')
-          self._out(f'{(x+r)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} l')
-          self._out(f'{(x+r - r*MyArc)*self.k:.2f} {(self.h-(y+h))*self.k:.2f} {x*self.k:.2f} {(self.h-(y+h-r + r*MyArc))*self.k:.2f} {x*self.k:.2f} {(self.h-(y+h-r))*self.k:.2f} c')
-          self._out(f'{x*self.k:.2f} {(self.h-(y+r))*self.k:.2f} l')
-          self._out(f'{x*self.k:.2f} {(self.h-(y+r - r*MyArc))*self.k:.2f} {(x+r - r*MyArc)*self.k:.2f} {(self.h-y)*self.k:.2f} {xc*self.k:.2f} {(self.h-yc)*self.k:.2f} c')
+          
+          # Départ après le coin supérieur gauche
+          self._out(f'{(x+r)*k:.2f} {(hp-y)*k:.2f} m')
+          # Ligne vers le coin supérieur droit
+          self._out(f'{(x+w-r)*k:.2f} {(hp-y)*k:.2f} l')
+          # Arc supérieur droit
+          self._out(f'{(x+w-r + r*MyArc)*k:.2f} {(hp-y)*k:.2f} {(x+w)*k:.2f} {(hp-(y+r - r*MyArc))*k:.2f} {(x+w)*k:.2f} {(hp-(y+r))*k:.2f} c')
+          # Ligne vers le coin inférieur droit
+          self._out(f'{(x+w)*k:.2f} {(hp-(y+h-r))*k:.2f} l')
+          # Arc inférieur droit
+          self._out(f'{(x+w)*k:.2f} {(hp-(y+h-r + r*MyArc))*k:.2f} {(x+w-r + r*MyArc)*k:.2f} {(hp-(y+h))*k:.2f} {(x+w-r)*k:.2f} {(hp-(y+h))*k:.2f} c')
+          # Ligne vers le coin inférieur gauche
+          self._out(f'{(x+r)*k:.2f} {(hp-(y+h))*k:.2f} l')
+          # Arc inférieur gauche
+          self._out(f'{(x+r - r*MyArc)*k:.2f} {(hp-(y+h))*k:.2f} {x*k:.2f} {(hp-(y+h-r + r*MyArc))*k:.2f} {x*k:.2f} {(hp-(y+h-r))*k:.2f} c')
+          # Ligne vers le coin supérieur gauche
+          self._out(f'{x*k:.2f} {(hp-(y+r))*k:.2f} l')
+          # Arc supérieur gauche
+          self._out(f'{x*k:.2f} {(hp-(y+r - r*MyArc))*k:.2f} {(x+r - r*MyArc)*k:.2f} {(hp-y)*k:.2f} {(x+r)*k:.2f} {(hp-y)*k:.2f} c')
           self._out(op)
 
       def footer(self):
@@ -501,7 +511,7 @@ if uploaded_file is not None and text_manual != "":
       pdf = PDFReport()
       pdf.add_page()
       
-      # 1. LOGO P&G (proportionnel sans l'étirer) + TITRE AVEC DÉGRADÉ SIMULÉ & COINS ARRONDIS
+      # 1. LOGO P&G + TITRE
       pg_logo_file = find_logo("Procter_&_Gamble_logo") or find_logo("P&G_Logo")
       converted_pg_logo = get_fpdf_image(pg_logo_file)
       
@@ -519,7 +529,6 @@ if uploaded_file is not None and text_manual != "":
           except Exception:
               pass
 
-      # Titre avec dégradé simulé et coins arrondis (r=3)
       pdf.set_draw_color(2, 21, 48)
       pdf.rounded_rect(38, 10, 162, 20, 3, 'DF')
       
@@ -537,16 +546,16 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_xy(42, 13)
       pdf.set_font("helvetica", "B", 11)
       pdf.set_text_color(255, 255, 255)
-      pdf.cell(154, 5, clean_pdf_text("Rapport de l'analyse du mode opératoire"), 0, 1, "L")
+      pdf.cell(154, 5, clean_pdf_text("Rapport de l'analyse du mode operatoire"), 0, 1, "L")
 
       pdf.set_xy(42, 19)
       pdf.set_font("helvetica", "", 8.5)
       pdf.set_text_color(220, 230, 242)
-      pdf.cell(154, 5, clean_pdf_text("P&G Amiens | Assistant sécurité construction"), 0, 1, "L")
+      pdf.cell(154, 5, clean_pdf_text("P&G Amiens | Assistant securite construction"), 0, 1, "L")
 
       pdf.set_y(34)
       
-      # 2. DÉTERMINATION DU NIVEAU DE CONFORMITÉ & BANDEAU DE STATUT (Longueur 190 mm, centré)
+      # 2. BANDEAU DE STATUT
       if score_global < 65:
           niveau = "rouge"
           statut_msg = "NON CONFORME AUX ATTENTES P&G"
@@ -561,7 +570,7 @@ if uploaded_file is not None and text_manual != "":
           text_color = (180, 83, 9)
       else:
           niveau = "vert"
-          statut_msg = "CONFORME AUX ATTENTES P&G SOUS RÉSERVE DE VALIDATION D'UN CASQUE ROUGE"
+          statut_msg = "CONFORME AUX ATTENTES P&G SOUS RESERVE DE VALIDATION D'UN CASQUE ROUGE"
           bg_color = (209, 250, 229)
           border_color = (16, 185, 129)
           text_color = (6, 95, 70)
@@ -582,7 +591,7 @@ if uploaded_file is not None and text_manual != "":
           
       pdf.set_y(current_y + banner_h + 4)
 
-      # 3. CARTE TABLEAU DE BORD (coins arrondis)
+      # 3. CARTE TABLEAU DE BORD
       card_y = pdf.get_y()
       pdf.set_fill_color(248, 249, 250)
       pdf.set_draw_color(210, 215, 222)
@@ -591,7 +600,7 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_xy(12, card_y + 2)
       pdf.set_font("helvetica", "B", 8)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(75, 4, clean_pdf_text("TAUX DE CONFORMITÉ"), 0, 1, "C")
+      pdf.cell(75, 4, clean_pdf_text("TAUX DE CONFORMITE"), 0, 1, "C")
       
       bar_x = 18
       bar_y = card_y + 11
@@ -620,7 +629,7 @@ if uploaded_file is not None and text_manual != "":
       pdf.set_xy(95, card_y + 3)
       pdf.set_font("helvetica", "B", 9)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(100, 5, clean_pdf_text("Scores par domaine d'évaluation :"), 0, 1, "L")
+      pdf.cell(100, 5, clean_pdf_text("Scores par domaine d'evaluation :"), 0, 1, "L")
       
       pdf.set_x(95)
       pdf.set_font("helvetica", "", 8.5)
@@ -650,14 +659,14 @@ if uploaded_file is not None and text_manual != "":
 
       pdf.set_y(card_y + 28)
 
-      # 4. BANDEAU BLEU (#02014a) : "ANALYSE DÉTAILLÉE PAR PHASE" (coins arrondis)
+      # 4. BANDEAU BLEU (#02014a) : "ANALYSE DETAILLEE PAR PHASE"
       pdf.set_fill_color(2, 1, 74)
       pdf.set_draw_color(2, 1, 74)
       pdf.rounded_rect(10, pdf.get_y(), 190, 7, 2, 'DF')
       pdf.set_xy(12, pdf.get_y() + 1)
       pdf.set_font("helvetica", "B", 9.5)
       pdf.set_text_color(255, 255, 255)
-      pdf.cell(186, 5, clean_pdf_text("ANALYSE DÉTAILLÉE PAR PHASE"), 0, 1, "L")
+      pdf.cell(186, 5, clean_pdf_text("ANALYSE DETAILLEE PAR PHASE"), 0, 1, "L")
       pdf.ln(3)
 
       def count_lines(text, max_chars=90):
@@ -670,7 +679,6 @@ if uploaded_file is not None and text_manual != "":
           
           start_y = pdf.get_y()
           
-          # Calcul précis de la hauteur pour éviter les dépassements de texte
           val_lines = sum(count_lines(f"- {item}") for item in val_list) if val_list else 1
           manq_lines = sum(count_lines(f" {item}") for item in manq_list) if manq_list else 1
           total_lines = 2 + val_lines + manq_lines
@@ -687,7 +695,7 @@ if uploaded_file is not None and text_manual != "":
           pdf.set_xy(13, start_y + 2)
           pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(16, 185, 129)
-          pdf.cell(184, 4, clean_pdf_text("Éléments validés :"), 0, 1)
+          pdf.cell(184, 4, clean_pdf_text("Elements valides :"), 0, 1)
           
           pdf.set_font("helvetica", "", 8)
           pdf.set_text_color(0, 0, 0)
@@ -697,12 +705,12 @@ if uploaded_file is not None and text_manual != "":
                   pdf.multi_cell(180, 4, clean_pdf_text(f"- {item}"))
           else:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text("- Aucun élément validé."))
+              pdf.multi_cell(180, 4, clean_pdf_text("- Aucun element valide."))
               
           pdf.set_xy(13, pdf.get_y() + 1)
           pdf.set_font("helvetica", "B", 8)
           pdf.set_text_color(239, 68, 68)
-          pdf.cell(184, 4, clean_pdf_text("Éléments manquants :"), 0, 1)
+          pdf.cell(184, 4, clean_pdf_text("Elements manquants :"), 0, 1)
           
           pdf.set_font("helvetica", "", 8)
           if manq_list:
@@ -714,18 +722,18 @@ if uploaded_file is not None and text_manual != "":
                   pdf.multi_cell(176, 4, clean_pdf_text(f" {item}"))
           else:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text("- Tous les points requis sont présents !"))
+              pdf.multi_cell(180, 4, clean_pdf_text("- Tous les points requis sont presents !"))
               
           pdf.set_y(start_y + box_height + 3)
 
-      draw_phase_card("Phase 1 : Vérification administrative & formelle", admin_valides, admin_manquants)
+      draw_phase_card("Phase 1 : Verification administrative & formelle", admin_valides, admin_manquants)
       draw_phase_card("Phase 2 : Contenu technique & structuration", tech_valides, tech_manquants)
 
-      # 5. TÂCHES À HAUT RISQUE & SUGGESTIONS (coins arrondis)
+      # 5. TACHES A HAUT RISQUE & SUGGESTIONS
       if taches_detectees or suggestions_contexte:
           pdf.set_font("helvetica", "B", 9.5)
           pdf.set_text_color(11, 35, 65)
-          pdf.cell(190, 5, clean_pdf_text("Tâches à haut risque & suggestions de sécurité"), 0, 1)
+          pdf.cell(190, 5, clean_pdf_text("Taches a haut risque & suggestions de securite"), 0, 1)
           pdf.ln(1)
           
           start_y = pdf.get_y()
@@ -747,7 +755,7 @@ if uploaded_file is not None and text_manual != "":
           pdf.set_text_color(153, 27, 27)
           
           if taches_detectees:
-              pdf.cell(184, 4, clean_pdf_text("Tâches à haut risque identifiées :"), 0, 1)
+              pdf.cell(184, 4, clean_pdf_text("Taches a haut risque identifiees :"), 0, 1)
               pdf.set_font("helvetica", "", 8)
               for tache in taches_detectees:
                   pdf.set_x(15)
@@ -760,17 +768,17 @@ if uploaded_file is not None and text_manual != "":
               
           pdf.set_y(start_y + box_h + 3)
 
-      # 6. LISTE DÉTAILLÉE DES ÉLÉMENTS À COMPLÉTER & SUGGESTIONS (coins arrondis)
+      # 6. LISTE DETAILLEE DES ELEMENTS A COMPLETER & SUGGESTIONS
       pdf.set_font("helvetica", "B", 9.5)
       pdf.set_text_color(11, 35, 65)
-      pdf.cell(190, 5, clean_pdf_text("Liste détaillée des éléments à compléter & suggestions"), 0, 1)
+      pdf.cell(190, 5, clean_pdf_text("Liste detaillee des elements a completer & suggestions"), 0, 1)
       pdf.ln(1)
       
       start_y = pdf.get_y()
       pdf.set_fill_color(255, 247, 237)
       pdf.set_draw_color(245, 158, 11)
       
-      admin_lines = sum(count_lines(f"- {item} : Intégrer explicitement dans le MOP.") for item in admin_manquants) if admin_manquants else 1
+      admin_lines = sum(count_lines(f"- {item} : Integrer explicitement dans le MOP.") for item in admin_manquants) if admin_manquants else 1
       tech_lines = sum(count_lines(f"- {item} : Structurer sous forme de tableau.") for item in tech_manquants) if tech_manquants else 1
       action_box_h = max(30, 12 + (admin_lines + tech_lines + 3) * 5)
       
@@ -783,29 +791,29 @@ if uploaded_file is not None and text_manual != "":
       
       pdf.set_font("helvetica", "B", 8)
       pdf.set_text_color(180, 83, 9)
-      pdf.cell(184, 4, clean_pdf_text("Points administratifs et formels à rajouter :"), 0, 1)
+      pdf.cell(184, 4, clean_pdf_text("Points administratifs et formels a rajouter :"), 0, 1)
       pdf.set_font("helvetica", "", 8)
       pdf.set_text_color(0, 0, 0)
       if admin_manquants:
           for item in admin_manquants:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Intégrer explicitement dans le MOP."))
+              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Integrer explicitement dans le MOP."))
       else:
           pdf.set_x(15)
-          pdf.multi_cell(180, 4, clean_pdf_text("- Aucun manquement formel détecté."))
+          pdf.multi_cell(180, 4, clean_pdf_text("- Aucun manquement formel detecte."))
 
       pdf.set_xy(13, pdf.get_y() + 1)
       pdf.set_font("helvetica", "B", 8)
       pdf.set_text_color(180, 83, 9)
-      pdf.cell(184, 4, clean_pdf_text("Améliorations techniques & sécurité :"), 0, 1)
+      pdf.cell(184, 4, clean_pdf_text("Ameliorations techniques & securite :"), 0, 1)
       pdf.set_font("helvetica", "", 8)
       pdf.set_text_color(0, 0, 0)
       if tech_manquants:
           for item in tech_manquants:
               pdf.set_x(15)
-              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Structurer sous forme de tableau (Phase, Moyens, Risques, Prévention)."))
+              pdf.multi_cell(180, 4, clean_pdf_text(f"- {item} : Structurer sous forme de tableau (Phase, Moyens, Risques, Prevention)."))
       pdf.set_x(15)
-      pdf.multi_cell(180, 4, clean_pdf_text("- Délai de soumission : Transmettre la version corrigée 48h avant intervention."))
+      pdf.multi_cell(180, 4, clean_pdf_text("- Delai de soumission : Transmettre la version corrigee 48h avant intervention."))
 
       return bytes(pdf.output())
 

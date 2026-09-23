@@ -1,4 +1,5 @@
 streamlit
 pypdf
 plotly
+Pillow
 fpdf2

@@ -154,7 +154,6 @@ if uploaded_file is not None and text_manual != "":
     admin_criteres = {
         "Dates de travaux prévus": ["date", "planning", "calendrier", "du ", " au ", "période"],
         "Référence PDP": ["pdp", "plan de prévention", "plan de prevention"],
-        "Project Manager": ["project manager", "chef de projet", "responsable de projet", "chargé d'affaire", "Donneur d'ordre", "Responsable travaux", "Technicien projet", "Responsable des travaux"],
         "Rédacteur avec N° de téléphone": ["rédacteur", "redacteur", "établi par", "contact", "tél", "telephone", "06", "07"],
         "Nom de l'entreprise & Logo": ["entreprise", "société", "societe", "sarl", "sas", "logo"],
         "Encart signature des intervenants": ["signature", "signé", "signataire", "visé par", "intervenants"],
